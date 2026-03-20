@@ -2,12 +2,12 @@
   "name": "Gogo Autos Fleet Manager",
   "short_name": "Gogo Autos",
   "description": "Manage your rental fleet",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#07070F",
   "theme_color": "#FF6B2B",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "icon-192.png",
