@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080808">
+<meta name="description" content="Browse available rental cars for gig delivery drivers. DoorDash, UberEats, Instacart, Amazon Flex and more. Find a car near you.">
+<title>Available Cars — GOGO Fleet</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root { --bg:#080808; --surface:#111111; --card:#181818; --border:#2C2C2C; --text:#F2F2F2; --muted:#7A7A7A; --dim:#222222; --accent:#FFFFFF; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+/* NAV */
+nav { position:sticky; top:0; z-index:100; background:rgba(8,8,8,.95); backdrop-filter:blur(20px); border-bottom:1px solid var(--border); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; }
+.nav-logo { display:flex; align-items:center; gap:8px; text-decoration:none; color:var(--text); font-size:14px; font-weight:900; letter-spacing:1px; }
+.nav-right { display:flex; gap:10px; align-items:center; }
+.nav-btn { font-size:12px; font-weight:600; color:var(--muted); text-decoration:none; padding:7px 14px; border-radius:20px; border:1px solid var(--border); }
+.nav-btn.primary { background:var(--text); color:var(--bg); border-color:var(--text); }
+
+/* HERO */
+.hero { padding:40px 20px 32px; text-align:center; background:radial-gradient(ellipse 80% 60% at 50% 0%,#1A1A1A,transparent 70%); }
+.hero h1 { font-size:clamp(22px,5vw,36px); font-weight:900; margin-bottom:8px; }
+.hero p { font-size:14px; color:var(--muted); margin-bottom:24px; }
+
+/* FILTERS */
+.filters { padding:0 16px 16px; display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.filters::-webkit-scrollbar { display:none; }
+.filter-group { display:flex; flex-direction:column; gap:4px; min-width:140px; flex-shrink:0; }
+.filter-label { font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); }
+.filter-select { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:8px 12px; font-size:13px; color:var(--text); outline:none; -webkit-appearance:none; cursor:pointer; }
+.filter-search { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:8px 12px; font-size:13px; color:var(--text); outline:none; width:100%; }
+.filter-search::placeholder { color:var(--muted); }
+.search-wrap { padding:0 16px 12px; }
+
+/* RESULTS */
+.results-header { padding:0 16px 12px; display:flex; justify-content:space-between; align-items:center; }
+.results-count { font-size:13px; color:var(--muted); font-weight:600; }
+.sort-btn { font-size:12px; color:var(--muted); background:var(--card); border:1px solid var(--border); border-radius:20px; padding:5px 12px; cursor:pointer; }
+
+/* CAR GRID */
+.car-grid { padding:0 16px; display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; }
+@media (max-width:500px) { .car-grid { grid-template-columns:1fr; } }
+
+/* CAR CARD */
+.car-card { background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; cursor:pointer; transition:border-color .15s; }
+.car-card:hover { border-color:var(--muted); }
+.car-photo { width:100%; aspect-ratio:16/9; object-fit:cover; background:var(--surface); display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:12px; }
+.car-photo img { width:100%; height:100%; object-fit:cover; }
+.car-photo-placeholder { width:100%; aspect-ratio:16/9; background:var(--surface); display:flex; align-items:center; justify-content:center; }
+.car-body { padding:14px; }
+.car-title { font-size:16px; font-weight:800; margin-bottom:4px; }
+.car-location { font-size:12px; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:4px; }
+.car-price { font-size:22px; font-weight:900; margin-bottom:6px; }
+.car-price span { font-size:13px; font-weight:400; color:var(--muted); }
+.car-tags { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+.car-tag { font-size:10px; font-weight:600; padding:3px 8px; border-radius:10px; background:var(--surface); border:1px solid var(--border); color:var(--muted); }
+.car-inquire-btn { width:100%; background:var(--accent); color:var(--bg); border:none; border-radius:10px; padding:11px; font-size:14px; font-weight:700; cursor:pointer; transition:opacity .15s; }
+.car-inquire-btn:hover { opacity:.85; }
+
+/* EMPTY STATE */
+.empty { text-align:center; padding:60px 20px; color:var(--muted); }
+.empty-icon { font-size:48px; margin-bottom:12px; }
+.empty-title { font-size:18px; font-weight:700; margin-bottom:8px; color:var(--text); }
+.empty-sub { font-size:14px; line-height:1.6; }
+
+/* MODAL */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:200; display:flex; align-items:flex-end; justify-content:center; opacity:0; pointer-events:none; transition:opacity .2s; }
+.modal-overlay.open { opacity:1; pointer-events:all; }
+.modal { background:var(--surface); border-radius:20px 20px 0 0; width:100%; max-width:560px; max-height:90vh; overflow-y:auto; padding:24px 20px 40px; transform:translateY(20px); transition:transform .2s; }
+.modal-overlay.open .modal { transform:translateY(0); }
+.modal-handle { width:40px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 20px; }
+.modal-title { font-size:18px; font-weight:800; margin-bottom:4px; }
+.modal-sub { font-size:13px; color:var(--muted); margin-bottom:20px; }
+.form-group { margin-bottom:14px; }
+.form-label { font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:6px; }
+.form-input { width:100%; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:11px 14px; font-size:15px; color:var(--text); outline:none; -webkit-appearance:none; }
+.form-input:focus { border-color:var(--accent); }
+.submit-btn { width:100%; background:var(--accent); color:var(--bg); border:none; border-radius:12px; padding:14px; font-size:15px; font-weight:800; cursor:pointer; }
+.submit-btn:disabled { opacity:.4; cursor:not-allowed; }
+.success-msg { text-align:center; padding:20px 0; }
+.loading { text-align:center; padding:40px; color:var(--muted); font-size:14px; }
+
+/* FOOTER */
+footer { padding:32px 20px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-top:40px; }
+.footer-logo { font-size:13px; font-weight:900; letter-spacing:1px; }
+.footer-links { display:flex; gap:16px; }
+.footer-link { font-size:12px; color:var(--muted); text-decoration:none; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">
+    <svg width="60" height="24" viewBox="0 0 280 112" xmlns="http://www.w3.org/2000/svg">
+      <style>.ls{fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;}.wl{font-family:-apple-system,sans-serif;font-weight:800;font-size:16px;dominant-baseline:central;text-anchor:middle;fill:currentColor;}</style>
+      <path class="ls" d="M52 62 L56 62 L64 50 L74 43 L108 40 L132 36 L158 35 L174 37 L186 43 L194 51 L196 62 L178 62"/>
+      <path class="ls" d="M52 62 L48 62 L44 58 L43 54 L45 49 L50 46 L56 45 L64 50"/>
+      <path class="ls" d="M196 58 L199 53 L200 49 L197 44 L192 42 L186 43"/>
+      <path class="ls" d="M82 40 L88 26 L100 22 L152 21 L166 24 L175 31 L180 40"/>
+      <path class="ls" d="M89 27 L97 24 L112 22 L124 23 L125 40 L88 40 Z"/>
+      <path class="ls" d="M128 23 L152 22 L164 24 L172 29 L177 38 L128 38 Z"/>
+      <circle class="ls" cx="72" cy="62" r="18"/>
+      <text class="wl" x="65" y="63">G</text><text class="wl" x="79" y="63">O</text>
+      <circle class="ls" cx="178" cy="62" r="18"/>
+      <text class="wl" x="171" y="63">G</text><text class="wl" x="185" y="63">O</text>
+    </svg>
+    GOGO FLEET
+  </a>
+  <div class="nav-right">
+    <a href="/renter" class="nav-btn">My Portal</a>
+    <a href="/signup" class="nav-btn primary">List My Fleet</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>Find a car for your deliveries</h1>
+  <p>Weekly rentals for DoorDash, UberEats, Instacart &amp; more drivers</p>
+</div>
+
+<div class="search-wrap">
+  <input class="filter-search" id="search-input" placeholder="Search by city, make, or model…" oninput="filterCars()">
+</div>
+
+<div class="filters">
+  <div class="filter-group">
+    <div class="filter-label">State</div>
+    <select class="filter-select" id="filter-state" onchange="filterCars()">
+      <option value="">All States</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <div class="filter-label">City</div>
+    <select class="filter-select" id="filter-city" onchange="filterCars()">
+      <option value="">All Cities</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <div class="filter-label">Platform</div>
+    <select class="filter-select" id="filter-platform" onchange="filterCars()">
+      <option value="">All Platforms</option>
+      <option>DoorDash</option>
+      <option>UberEats</option>
+      <option>Instacart</option>
+      <option>Amazon Flex</option>
+      <option>GrubHub</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <div class="filter-label">Max Price/wk</div>
+    <select class="filter-select" id="filter-price" onchange="filterCars()">
+      <option value="">Any Price</option>
+      <option value="300">Under $300</option>
+      <option value="400">Under $400</option>
+      <option value="500">Under $500</option>
+      <option value="600">Under $600</option>
+    </select>
+  </div>
+</div>
+
+<div class="results-header">
+  <div class="results-count" id="results-count">Loading…</div>
+</div>
+
+<div class="car-grid" id="car-grid">
+  <div class="loading">Loading available cars…</div>
+</div>
+
+<!-- INQUIRY MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target.id==='modal-overlay')closeModal()">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-logo">GOGO FLEET</div>
+  <div class="footer-links">
+    <a href="/" class="footer-link">Home</a>
+    <a href="/signup" class="footer-link">List Your Fleet</a>
+    <a href="/renter" class="footer-link">Renter Portal</a>
+    <a href="/privacy" class="footer-link">Privacy</a>
+  </div>
+</footer>
+
+<script>
+const SB_URL = 'https://pbglpxipzidwhaxganzx.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBiZ2xweGlwemlkd2hheGdhbnp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMDU4NTEsImV4cCI6MjA4OTU4MTg1MX0.kMncp_z2-lzotOho-Yw-8uQI5hkya2SY96ahADQW2Jk';
+const FUNCTIONS_URL = 'https://pbglpxipzidwhaxganzx.supabase.co/functions/v1';
+
+let allCars = [];
+let selectedCar = null;
+
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const $ = n => '$' + Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+
+async function loadListings() {
+  try {
+    // Only load cars that are available and listed for rent
+    const r = await fetch(`${SB_URL}/rest/v1/cars?status=eq.available&listed=eq.true&order=created_at.desc`, {
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/json' }
+    });
+    const data = await r.json();
+    allCars = Array.isArray(data) ? data : [];
+
+    // Populate state/city filters
+    const states = [...new Set(allCars.map(c => c.state).filter(Boolean))].sort();
+    const cities = [...new Set(allCars.map(c => c.city).filter(Boolean))].sort();
+
+    const stateEl = document.getElementById('filter-state');
+    states.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; stateEl.appendChild(o); });
+
+    const cityEl = document.getElementById('filter-city');
+    cities.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; cityEl.appendChild(o); });
+
+    filterCars();
+  } catch(e) {
+    document.getElementById('car-grid').innerHTML = '<div class="empty"><div class="empty-icon" style="display:flex;justify-content:center;color:#555;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/><path d="M10 17h4"/><path d="M4 9h16"/></svg></div><div class="empty-title">Could not load listings</div><div class="empty-sub">Please try again later.</div></div>';
+    document.getElementById('results-count').textContent = '';
+  }
+}
+
+function filterCars() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const state = document.getElementById('filter-state').value;
+  const city = document.getElementById('filter-city').value;
+  const platform = document.getElementById('filter-platform').value;
+  const maxPrice = parseInt(document.getElementById('filter-price').value) || Infinity;
+
+  const filtered = allCars.filter(car => {
+    const weeklyTotal = (+car.listing_weekly_rent || 400) + (+car.listing_protection_fee || 126);
+    if (weeklyTotal > maxPrice) return false;
+    if (state && car.state !== state) return false;
+    if (city && car.city !== city) return false;
+    if (platform && car.platforms && !car.platforms.includes(platform)) return false;
+    if (search) {
+      const haystack = [car.year, car.make, car.model, car.city, car.state, car.color, car.notes].join(' ').toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+    return true;
+  });
+
+  renderCars(filtered);
+  document.getElementById('results-count').textContent = filtered.length + ' car' + (filtered.length !== 1 ? 's' : '') + ' available';
+}
+
+async function getCarPhoto(carId) {
+  try {
+    const r = await fetch(`${SB_URL}/storage/v1/object/list/vehicle-photos`, {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefix: `cars/${carId}/`, limit: 1 })
+    });
+    const files = await r.json();
+    if (files && files.length) {
+      return `${SB_URL}/storage/v1/object/public/vehicle-photos/cars/${carId}/${files[0].name}`;
+    }
+  } catch(e) {}
+  return null;
+}
+
+function renderCars(cars) {
+  const grid = document.getElementById('car-grid');
+
+  if (!cars.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1;">
+      <div class="empty-icon" style="display:flex;justify-content:center;color:#555;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/><path d="M10 17h4"/><path d="M4 9h16"/></svg></div>
+      <div class="empty-title">No cars found</div>
+      <div class="empty-sub">Try adjusting your filters or check back soon — new cars are added regularly.</div>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = cars.map(car => {
+    const weekly = (+car.listing_weekly_rent || 400) + (+car.listing_protection_fee || 126);
+    const platforms = car.platforms ? car.platforms.split(',').map(p => p.trim()) : ['DoorDash','UberEats'];
+    const location = [car.city, car.state].filter(Boolean).join(', ') || 'Houston, TX';
+
+    return `<div class="car-card" onclick="openInquiry('${car.id}')">
+      <div class="car-photo-placeholder" id="photo-${car.id}">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/><path d="M10 17h4"/><path d="M4 9h16"/></svg>
+      </div>
+      <div class="car-body">
+        <div class="car-title">${esc(car.year + ' ' + car.make + ' ' + car.model)}</div>
+        <div class="car-location">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          ${esc(location)}
+        </div>
+        <div class="car-price">${$(weekly)}<span>/week</span></div>
+        <div class="car-tags">
+          ${car.color ? `<span class="car-tag">${esc(car.color)}</span>` : ''}
+          ${platforms.slice(0,3).map(p => `<span class="car-tag">${esc(p)}</span>`).join('')}
+        </div>
+        <button class="car-inquire-btn" onclick="event.stopPropagation();openInquiry('${car.id}')">Inquire →</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Load photos async
+  cars.forEach(car => {
+    getCarPhoto(car.id).then(url => {
+      if (url) {
+        const el = document.getElementById('photo-' + car.id);
+        if (el) el.innerHTML = `<img src="${url}" alt="${esc(car.year+' '+car.make+' '+car.model)}" loading="lazy" onerror="this.parentElement.style.display='none'">`;
+      }
+    });
+  });
+}
+
+function openInquiry(carId) {
+  selectedCar = allCars.find(c => c.id === carId);
+  if (!selectedCar) return;
+  const car = selectedCar;
+  const weekly = (+car.listing_weekly_rent || 400) + (+car.listing_protection_fee || 126);
+  const location = [car.city, car.state].filter(Boolean).join(', ') || 'Houston, TX';
+
+  document.getElementById('modal-content').innerHTML = `
+    <div class="modal-title">${esc(car.year + ' ' + car.make + ' ' + car.model)}</div>
+    <div class="modal-sub">${esc(location)} · ${$(weekly)}/week</div>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:20px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Weekly Rent</div><div style="font-size:16px;font-weight:800;">${$((+car.listing_weekly_rent||400))}</div></div>
+        <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Protection Fee</div><div style="font-size:16px;font-weight:800;">${$((+car.listing_protection_fee||126))}/wk</div></div>
+        <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Min Contract</div><div style="font-size:16px;font-weight:800;">4 weeks</div></div>
+        <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Location</div><div style="font-size:13px;font-weight:700;">${esc(location)}</div></div>
+      </div>
+    </div>
+
+    <div class="form-group"><label class="form-label">Your Name *</label><input class="form-input" id="inq-name" type="text" placeholder="Full name" autocapitalize="words"></div>
+    <div class="form-group"><label class="form-label">Phone Number *</label><input class="form-input" id="inq-phone" type="tel" placeholder="713-555-0000" inputmode="tel"></div>
+    <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="inq-email" type="email" placeholder="Optional" inputmode="email" autocapitalize="none"></div>
+    <div class="form-group"><label class="form-label">Delivery Platform</label>
+      <select class="form-input" id="inq-platform">
+        ${['DoorDash','UberEats','Instacart','Amazon Flex','GrubHub','Other'].map(p=>`<option>${p}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Message (optional)</label><textarea class="form-input" id="inq-message" rows="3" placeholder="When are you looking to start? Any questions?" style="resize:none;"></textarea></div>
+    <div id="inq-error" style="display:none;background:#FFFFFF10;border:1px solid #FFFFFF22;border-radius:8px;padding:10px;font-size:13px;color:#BBBBBB;margin-bottom:12px;"></div>
+    <button class="submit-btn" id="inq-submit-btn" onclick="submitInquiry()">Send Inquiry →</button>
+    <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:10px;">The fleet owner will contact you directly</div>`;
+
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+async function submitInquiry() {
+  const name = document.getElementById('inq-name').value.trim();
+  const phone = document.getElementById('inq-phone').value.trim();
+  if (!name || !phone) {
+    const err = document.getElementById('inq-error');
+    err.textContent = 'Please enter your name and phone number';
+    err.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('inq-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+
+  try {
+    const car = selectedCar;
+    const msg = [
+      document.getElementById('inq-message').value.trim(),
+      'Platform: ' + document.getElementById('inq-platform').value,
+    ].filter(Boolean).join(' | ');
+
+    // Save inquiry to Supabase
+    await fetch(`${SB_URL}/rest/v1/inquiries`, {
+      method: 'POST',
+      headers: {
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        car_id: car.id,
+        owner_id: car.owner_id,
+        name,
+        phone,
+        email: document.getElementById('inq-email').value.trim() || null,
+        platform: document.getElementById('inq-platform').value,
+        message: msg,
+        car_info: car.year + ' ' + car.make + ' ' + car.model,
+        created_at: new Date().toISOString()
+      })
+    });
+
+    // Show success
+    document.getElementById('modal-content').innerHTML = `
+      <div class="success-msg">
+        <div style="font-size:48px;margin-bottom:16px;">✓</div>
+        <div style="font-size:18px;font-weight:800;margin-bottom:8px;">Inquiry sent!</div>
+        <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:24px;">The fleet owner will contact you at <strong style="color:var(--text);">${esc(phone)}</strong> shortly.</div>
+        <button class="submit-btn" onclick="closeModal()">Done</button>
+      </div>`;
+
+  } catch(e) {
+    const err = document.getElementById('inq-error');
+    if (err) { err.textContent = 'Could not send inquiry. Please try again.'; err.style.display = 'block'; }
+    btn.disabled = false;
+    btn.textContent = 'Send Inquiry →';
+  }
+}
+
+// Boot
+loadListings();
+</script>
+</body>
+</html>
