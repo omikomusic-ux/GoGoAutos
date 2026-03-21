@@ -310,7 +310,19 @@ async function submitSignup() {
       });
     }
 
-    // 4. Store session and redirect
+    // 4. Send welcome email
+    try {
+      await fetch('https://pbglpxipzidwhaxganzx.supabase.co/functions/v1/send-welcome-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_KEY },
+        body: JSON.stringify({
+          name: signupData.fname + ' ' + (signupData.lname || ''),
+          email: signupData.email
+        })
+      });
+    } catch(e) { console.warn('Welcome email failed:', e); }
+
+    // 5. Store session and redirect
     if (authData.session) {
       localStorage.setItem('gogoautos-session', JSON.stringify(authData.session));
     }
