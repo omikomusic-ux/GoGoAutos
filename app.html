@@ -441,6 +441,13 @@
   .view-btn { flex:1; padding:6px; border-radius:16px; border:none; background:transparent; color:var(--muted); font-size:12px; font-weight:600; cursor:pointer; transition:all .15s; }
   .view-btn.active { background:var(--card); color:var(--text); }
 
+
+  /* ── PUSH NOTIFICATIONS ── */
+  .push-banner { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:14px; display:flex; align-items:center; gap:12px; }
+  .push-banner-icon { flex-shrink:0; color:var(--muted); }
+  .push-banner-text { flex:1; font-size:13px; color:var(--muted); line-height:1.5; }
+  .push-banner-btn { background:var(--accent); color:var(--bg); border:none; border-radius:20px; padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer; flex-shrink:0; }
+
 </style>
 </head>
 <body>
@@ -545,6 +552,10 @@
     </button>
     <button class="nav-tab" data-page="team" onclick="navigate('team')">
       <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span>Team</span>
+    </button>
+    <button class="nav-tab" data-page="inquiries" onclick="navigate('inquiries')" id="inquiries-nav-btn" style="display:none;">
+      <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+      <span>Leads</span>
     </button>
     <button class="nav-tab" data-page="reports" onclick="navigate('reports')">
       <span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span>Reports</span>
@@ -797,7 +808,7 @@ async function handleReset() {
     setAuthError('');
     document.getElementById('auth-card-container').innerHTML = `
       <div class="auth-card" style="text-align:center;">
-        <div style="font-size:36px;margin-bottom:12px;">📧</div>
+        <div style="display:flex;justify-content:center;margin-bottom:12px;color:var(--muted);"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
         <div class="auth-title">Check your email</div>
         <div class="auth-sub">We sent a password reset link to <strong>${esc(email)}</strong>. Check your inbox and spam folder.</div>
         <button class="btn-primary" style="margin-top:16px;" onclick="showAuthScreen('login')">Back to Sign In</button>
@@ -880,6 +891,8 @@ async function ensureValidToken() {
 function updateTrackingNavVisibility() {
   const btn = document.getElementById('tracking-nav-btn');
   if (btn) btn.style.display = canEdit() ? 'flex' : 'none';
+  const inqBtn = document.getElementById('inquiries-nav-btn');
+  if (inqBtn) inqBtn.style.display = isOwner() ? 'flex' : 'none';
 }
 
 /* ═══════════════════════════════════════
@@ -898,6 +911,7 @@ async function loadData() {
     showSync('Synced', 'ok');
     setTimeout(hideSyncBar, 2000);
     updateAlertBadge();
+    updateInquiriesBadge();
   } catch(e) {
     showSync('Sync error', 'error');
     console.error('loadData error:', e.message, e);
@@ -973,7 +987,7 @@ function setTopbar(center = '', rightHtml = '') {
   document.getElementById('topbar-right').innerHTML = rightHtml;
 }
 
-function render() {
+async function render() {
   const el = document.getElementById('main-content');
   el.className = 'page-content';
   if (currentPage === 'dashboard') { setTopbar(''); el.innerHTML = renderDashboard(); }
@@ -989,6 +1003,7 @@ function render() {
     setTimeout(initTrackingMap, 100);
   }
   else if (currentPage === 'reports') { setTopbar('Reports'); el.innerHTML = renderReports(); }
+  else if (currentPage === 'inquiries') { setTopbar('Leads'); el.innerHTML = await renderInquiries(); }
   updateAlertBadge();
 }
 
@@ -1050,7 +1065,7 @@ function renderDashboard() {
 
   let alerts = '';
   available.forEach(c => { alerts += `<div class="alert-card" style="border-color:var(--green)" onclick="navigate('car','${c.id}')"><div class="alert-icon">🟢</div><div><div style="font-size:13px;font-weight:700;color:var(--green);">${esc(c.year + ' ' + c.make + ' ' + c.model)}</div><div style="font-size:12px;color:var(--muted);">Available — ready to rent</div></div></div>`; });
-  rented.forEach(c => { const r = carRenter(c.id); if (!r) return; const dl = daysLeft(r.contract_end); if (dl < 0) alerts += `<div class="alert-card" style="border-color:var(--red)" onclick="navigate('car','${c.id}')"><div class="alert-icon">🚨</div><div><div style="font-size:13px;font-weight:700;color:var(--red);">${esc(r.name)} — OVERDUE</div><div style="font-size:12px;color:var(--muted);">${Math.abs(dl)}d overdue · ${esc(c.year + ' ' + c.make + ' ' + c.model)}</div></div></div>`; else if (dl <= 7) alerts += `<div class="alert-card" style="border-color:var(--gold)" onclick="navigate('car','${c.id}')"><div class="alert-icon">⏰</div><div><div style="font-size:13px;font-weight:700;color:var(--gold);">${esc(r.name)}</div><div style="font-size:12px;color:var(--muted);">Contract ends in ${dl} day(s)</div></div></div>`; });
+  rented.forEach(c => { const r = carRenter(c.id); if (!r) return; const dl = daysLeft(r.contract_end); if (dl < 0) alerts += `<div class="alert-card" style="border-color:var(--red)" onclick="navigate('car','${c.id}')"><div class="alert-icon" style="color:var(--muted);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div><div style="font-size:13px;font-weight:700;color:var(--red);">${esc(r.name)} — OVERDUE</div><div style="font-size:12px;color:var(--muted);">${Math.abs(dl)}d overdue · ${esc(c.year + ' ' + c.make + ' ' + c.model)}</div></div></div>`; else if (dl <= 7) alerts += `<div class="alert-card" style="border-color:var(--gold)" onclick="navigate('car','${c.id}')"><div class="alert-icon">⏰</div><div><div style="font-size:13px;font-weight:700;color:var(--gold);">${esc(r.name)}</div><div style="font-size:12px;color:var(--muted);">Contract ends in ${dl} day(s)</div></div></div>`; });
 
   const contracts = rented.map(car => {
     const r = carRenter(car.id); if (!r) return '';
@@ -1073,6 +1088,23 @@ function renderDashboard() {
       <div class="kpi"><div class="kpi-label">Est. Monthly Net</div><div class="kpi-value" style="color:${net >= 0 ? 'var(--green)' : 'var(--red)'}">${$(net)}</div><div class="kpi-sub">after est. costs</div></div>
       <div class="kpi"><div class="kpi-label">Fleet Utilization</div><div class="kpi-value" style="color:var(--orange)">${util}%</div><div class="kpi-sub">${rented.length}/${cars.length} cars</div></div>
       <div class="kpi"><div class="kpi-label">All-Time Revenue</div><div class="kpi-value" style="color:var(--gold)">${$(totalRev)}</div><div class="kpi-sub">total collected</div></div>
+    </div>
+    <div id="push-banner" class="push-banner" style="display:none;">
+      <div class="push-banner-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </div>
+      <div class="push-banner-text">Enable notifications to get alerts for overdue payments and expiring contracts</div>
+      <button class="push-banner-btn" onclick="enablePushNotifications()">Enable</button>
+    </div>
+    <div class="view-toggle" style="margin-bottom:14px;">
+      <button class="view-btn active" onclick="setDashView('list')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        List
+      </button>
+      <button class="view-btn" onclick="setDashView('calendar')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Calendar
+      </button>
     </div>
     ${alerts ? `<div class="section-title">Alerts</div>${alerts}` : ''}
     <div class="section-title">Active Contracts</div>
@@ -1143,12 +1175,12 @@ function renderCarPage() {
   if (currentCarTab === 'payments') {
     const sorted = pays.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     tabContent = `${canEdit() ? `<button class="btn-primary green" onclick="openSheet('add-payment','${car.id}')">+ Record Payment</button>` : ''}
-      ${sorted.length ? `<div class="card" style="margin-top:14px;">${sorted.map(p => `<div class="ledger-row"><div class="ledger-main"><div class="ledger-title">Week ${p.week_num} · ${esc(p.method)}</div><div class="ledger-sub">${fmtDate(p.date)}${p.note?' · '+esc(p.note):''} <span style="color:var(--dim);font-size:10px;">by ${esc(p.recorded_by||'—')}</span></div></div><div class="ledger-amt" style="color:var(--green)">${$(p.amount)}</div>${canEdit()?`<button class="del-btn" onclick="delPayment('${p.id}')">✕</button>`:''}</div>`).join('')}</div><div class="summary-row"><span class="summary-label">Total Collected</span><span class="summary-val" style="color:var(--green)">${$(totalCollected)}</span></div>` : `<div class="empty-state"><div class="empty-icon">💵</div><div class="empty-title">No payments yet</div></div>`}`;
+      ${sorted.length ? `<div class="card" style="margin-top:14px;">${sorted.map(p => `<div class="ledger-row"><div class="ledger-main"><div class="ledger-title">Week ${p.week_num} · ${esc(p.method)}</div><div class="ledger-sub">${fmtDate(p.date)}${p.note?' · '+esc(p.note):''} <span style="color:var(--dim);font-size:10px;">by ${esc(p.recorded_by||'—')}</span></div></div><div class="ledger-amt" style="color:var(--green)">${$(p.amount)}</div>${canEdit()?`<button class="del-btn" onclick="delPayment('${p.id}')">✕</button>`:''}</div>`).join('')}</div><div class="summary-row"><span class="summary-label">Total Collected</span><span class="summary-val" style="color:var(--green)">${$(totalCollected)}</span></div>` : `<div class="empty-state"><div class="empty-icon" style="display:flex;justify-content:center;color:var(--muted);"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div><div class="empty-title">No payments yet</div></div>`}`;
   }
   if (currentCarTab === 'maintenance') {
     const sorted = maints.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     tabContent = `${canEdit() ? `<button onclick="openSheet('add-maintenance','${car.id}')" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;">+ Log Maintenance</button>` : ''}
-      ${sorted.length ? `<div class="card" style="margin-top:14px;">${sorted.map(m => `<div class="ledger-row"><div class="ledger-main"><div class="ledger-title">${esc(m.type)}</div><div class="ledger-sub">${fmtDate(m.date)}${m.notes?' · '+esc(m.notes):''} <span style="color:var(--dim);font-size:10px;">by ${esc(m.recorded_by||'—')}</span></div></div><div class="ledger-amt" style="color:var(--orange)">${$(m.cost)}</div>${canEdit()?`<button class="del-btn" onclick="delMaintenance('${m.id}')">✕</button>`:''}</div>`).join('')}</div><div class="summary-row"><span class="summary-label">Total Maintenance</span><span class="summary-val" style="color:var(--orange)">${$(totalMaint)}</span></div>` : `<div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-title">No maintenance yet</div></div>`}`;
+      ${sorted.length ? `<div class="card" style="margin-top:14px;">${sorted.map(m => `<div class="ledger-row"><div class="ledger-main"><div class="ledger-title">${esc(m.type)}</div><div class="ledger-sub">${fmtDate(m.date)}${m.notes?' · '+esc(m.notes):''} <span style="color:var(--dim);font-size:10px;">by ${esc(m.recorded_by||'—')}</span></div></div><div class="ledger-amt" style="color:var(--orange)">${$(m.cost)}</div>${canEdit()?`<button class="del-btn" onclick="delMaintenance('${m.id}')">✕</button>`:''}</div>`).join('')}</div><div class="summary-row"><span class="summary-label">Total Maintenance</span><span class="summary-val" style="color:var(--orange)">${$(totalMaint)}</span></div>` : `<div class="empty-state"><div class="empty-icon" style="display:flex;justify-content:center;color:var(--muted);"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div><div class="empty-title">No maintenance yet</div></div>`}`;
   }
   if (currentCarTab === 'photos') {
     tabContent = `<div id="car-photo-section"><div style="font-size:12px;color:var(--muted);padding:8px 0;">Loading photos…</div></div>`;
@@ -1162,7 +1194,7 @@ function renderCarPage() {
         </div>
         <div id="renter-docs-section"><div style="font-size:12px;color:var(--muted);">Loading…</div></div>`;
     } else {
-      tabContent = `<div class="empty-state"><div class="empty-icon" style="font-size:36px;margin-bottom:12px;">📄</div><div class="empty-title">No Active Renter</div><div class="empty-sub">Documents appear here when a renter uploads their license and insurance card from the portal.</div></div>`;
+      tabContent = `<div class="empty-state"><div class="empty-icon" style="display:flex;justify-content:center;margin-bottom:12px;color:var(--muted);"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="empty-title">No Active Renter</div><div class="empty-sub">Documents appear here when a renter uploads their license and insurance card from the portal.</div></div>`;
     }
   }
 
@@ -1175,14 +1207,14 @@ function renderCarPage() {
       <div class="kpi"><div class="kpi-label">Net P&L</div><div class="kpi-value" style="color:${totalCollected-totalMaint>=0?'var(--green)':'var(--red)'};font-size:18px;">${$(totalCollected-totalMaint)}</div></div>
     </div>
     ${canEdit() ? `<div class="action-grid" style="margin-bottom:14px;">
-      ${car.status==='available'?`<button class="action-btn green" onclick="openSheet('assign-renter','${car.id}')"><span class="ab-icon">🔑</span>Assign Renter</button>`:''}
-      ${car.status==='rented'?`<button class="action-btn green" onclick="openSheet('add-payment','${car.id}')"><span class="ab-icon">💵</span>Record Payment</button>`:''}
-      ${car.status==='rented'?`<button class="action-btn gold" onclick="confirmEndContract('${car.id}')"><span class="ab-icon">🏁</span>End Contract</button>`:''}
-      <button class="action-btn orange" onclick="openSheet('add-maintenance','${car.id}')"><span class="ab-icon">🔧</span>Log Maintenance</button>
-      ${car.status!=='maintenance'?`<button class="action-btn dim" onclick="setCarStatus('${car.id}','maintenance')"><span class="ab-icon">⚙️</span>→ Maintenance</button>`:''}
-      ${car.status!=='available'&&car.status!=='rented'?`<button class="action-btn dim" onclick="setCarStatus('${car.id}','available')"><span class="ab-icon">✅</span>→ Available</button>`:''}
-      <button class="action-btn dim" onclick="openSheet('edit-car','${car.id}')"><span class="ab-icon">✏️</span>Edit Vehicle</button>
-      ${isOwner()?`<button class="action-btn red" onclick="confirmDeleteCar('${car.id}')"><span class="ab-icon">🗑️</span>Delete</button>`:''}
+      ${car.status==='available'?`<button class="action-btn green" onclick="openSheet('assign-renter','${car.id}')"><span class="ab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></span>Assign Renter</button>`:''}
+      ${car.status==='rented'?`<button class="action-btn green" onclick="openSheet('add-payment','${car.id}')"><span class="ab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>Record Payment</button>`:''}
+      ${car.status==='rented'?`<button class="action-btn gold" onclick="confirmEndContract('${car.id}')"><span class="ab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg></span>End Contract</button>`:''}
+      <button class="action-btn orange" onclick="openSheet('add-maintenance','${car.id}')"><span class="ab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>Log Maintenance</button>
+      ${car.status!=='maintenance'?`<button class="action-btn dim" onclick="setCarStatus('${car.id}','maintenance')"><span class="ab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>→ Maintenance</button>`:''}
+      ${car.status!=='available'&&car.status!=='rented'?`<button class="action-btn dim" onclick="setCarStatus('${car.id}','available')"><span class="ab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>→ Available</button>`:''}
+      <button class="action-btn dim" onclick="openSheet('edit-car','${car.id}')"><span class="ab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>Edit Vehicle</button>
+      ${isOwner()?`<button class="action-btn red" onclick="confirmDeleteCar('${car.id}')"><span class="ab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span>Delete</button>`:''}
     </div>` : `<div style="padding:12px 14px;background:var(--surface);border-radius:10px;font-size:12px;color:var(--muted);margin-bottom:14px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> View only — contact the owner to make changes</div>`}
     <div class="tab-bar">
       <button class="tab ${currentCarTab==='overview'?'active':''}" onclick="setCarTab('overview')">Overview</button>
@@ -1211,7 +1243,7 @@ function setCarTab(t) {
 function renderRenters() {
   const active = state.cars.filter(c => c.status === 'rented' && carRenter(c.id));
   const past = state.renters.filter(r => !r.active);
-  if (!active.length && !past.length) return `<div class="empty-state"><div class="empty-icon">👤</div><div class="empty-title">No renters yet</div></div>`;
+  if (!active.length && !past.length) return `<div class="empty-state"><div class="empty-icon" style="display:flex;justify-content:center;color:var(--muted);"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="empty-title">No renters yet</div></div>`;
   let html = '';
   if (active.length) {
     html += `<div class="section-title">Active Renters (${active.length})</div>`;
@@ -1299,7 +1331,23 @@ function renderTeam() {
       <div class="info-row"><span class="info-key"><span class="role-owner">owner</span></span><span class="info-val" style="color:var(--muted);font-weight:400;text-align:left;font-size:12px;">Full access to their own fleet only. Cannot see other owners' data.</span></div>
       <div class="info-row"><span class="info-key"><span class="role-manager">manager</span></span><span class="info-val" style="color:var(--muted);font-weight:400;text-align:left;font-size:12px;">Log payments, maintenance, expenses for this fleet only.</span></div>
       <div class="info-row"><span class="info-key"><span class="role-viewer">viewer</span></span><span class="info-val" style="color:var(--muted);font-weight:400;text-align:left;font-size:12px;">Read-only access to this fleet only. No other data visible.</span></div>
-    </div>`;
+    </div>
+
+    ${isOwner() ? `
+    <div class="section-title" style="margin-top:16px;">Business Profile</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Shown on your marketplace listings</div>
+    <div class="form-group"><label class="form-label">Business Name</label>
+      <input class="form-input" id="prof-bizname" placeholder="e.g. Carlos Fleet LLC" value="${esc(myProfile?.biz_name||'')}"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">City</label>
+        <input class="form-input" id="prof-city" placeholder="Houston" value="${esc(myProfile?.city||'Houston')}"></div>
+      <div class="form-group"><label class="form-label">State</label>
+        <input class="form-input" id="prof-state" placeholder="TX" value="${esc(myProfile?.state||'TX')}" maxlength="2" style="text-transform:uppercase;"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Contact Phone</label>
+      <input class="form-input" id="prof-phone" type="tel" placeholder="713-555-0000" value="${esc(myProfile?.contact_phone||'')}"></div>
+    <button class="btn-primary" onclick="saveOwnerProfile()" style="margin-top:4px;">Save Profile</button>
+    ` : ''}`;
 }
 
 async function promoteTeam(id, role) {
@@ -1525,7 +1573,7 @@ function renderReports() {
 
   const reportTabs = [
     { id: 'weekly', icon: '›', label: 'Weekly Income' },
-    { id: 'pl', icon: '💰', label: 'P&L Per Car' },
+    { id: 'pl', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>', label: 'P&L Per Car' },
     { id: 'overdue', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', label: 'Overdue' },
     { id: 'maintenance', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>', label: 'Maintenance' },
     { id: 'utilization', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>', label: 'Utilization' },
@@ -1748,7 +1796,7 @@ function renderOverdueReport() {
 
   if (!overdueList.length && !upcomingList.length) return `
     <div style="text-align:center;padding:48px 24px;">
-      <div style="font-size:48px;margin-bottom:14px;">✅</div>
+      <div style="display:flex;justify-content:center;margin-bottom:14px;color:var(--muted);"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
       <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px;">All Clear</div>
       <div style="font-size:13px;color:var(--muted);">No overdue payments or expiring contracts right now.</div>
     </div>`;
@@ -2272,7 +2320,7 @@ function renderPhotoGallery(carId, urls, el) {
       ${urls.map((url, i) => `
         <div class="car-photo-item" onclick="openLightbox('${url}','Photo ${i+1}')">
           <img src="${url}" alt="Vehicle photo ${i+1}" loading="lazy">
-          ${isOwnerOrManager ? `<button class="car-photo-del" onclick="event.stopPropagation();confirmDeletePhoto('${carId}','${url}')">🗑</button>` : ''}
+          ${isOwnerOrManager ? `<button class="car-photo-del" onclick="event.stopPropagation();confirmDeletePhoto('${carId}','${url}')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>` : ''}
         </div>`).join('')}
     </div>` : `<div style="background:var(--surface);border-radius:10px;padding:20px;text-align:center;color:var(--muted);margin-bottom:12px;"><div style="font-size:24px;margin-bottom:6px;"></div><div style="font-size:13px;">No photos yet</div></div>`}
     ${isOwnerOrManager ? `
@@ -3699,6 +3747,221 @@ async function toggleCarListing(carId, newState) {
   } catch(e) {
     showToast('Update failed', 'error');
   }
+}
+
+/* ═══════════════════════════════════════
+   INQUIRIES / LEADS
+═══════════════════════════════════════ */
+async function renderInquiries() {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/inquiries?order=created_at.desc&limit=100`, {
+      headers: { ...authHeaders(), 'Accept': 'application/json' }
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const inquiries = await r.json();
+
+    if (!inquiries.length) {
+      return `<div class="empty-state">
+        <div class="empty-icon" style="display:flex;justify-content:center;color:var(--muted);">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="empty-title">No inquiries yet</div>
+        <div class="empty-sub">When renters inquire about your cars from the marketplace, they'll appear here.</div>
+        <a href="https://gogofleet.app/cars" target="_blank" class="btn-primary" style="display:inline-block;margin-top:16px;max-width:220px;text-align:center;text-decoration:none;">View Marketplace →</a>
+      </div>`;
+    }
+
+    // Group by car
+    const byDate = inquiries;
+    const today = new Date().toISOString().slice(0,10);
+    const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+
+    const rows = byDate.map(inq => {
+      const dateStr = inq.created_at?.slice(0,10);
+      const timeStr = inq.created_at ? new Date(inq.created_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '';
+      const dateLabel = dateStr === today ? 'Today' : dateStr === yesterday ? 'Yesterday' : fmtDate(dateStr);
+      const car = state.cars.find(c => c.id === inq.car_id);
+      const carLabel = inq.car_info || (car ? `${car.year} ${car.make} ${car.model}` : 'Unknown car');
+
+      return `<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+          <div>
+            <div style="font-size:15px;font-weight:700;">${esc(inq.name)}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px;">${esc(inq.platform || '—')} · ${dateLabel} ${timeStr}</div>
+          </div>
+          <a href="tel:${esc(inq.phone)}" style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:7px 14px;text-decoration:none;color:var(--text);font-size:13px;font-weight:700;flex-shrink:0;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6.06 6.06l1.41-1.41a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            Call
+          </a>
+        </div>
+        <div style="background:var(--surface);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/><path d="M10 17h4"/><path d="M4 9h16"/></svg>
+          <span style="font-size:13px;color:var(--muted);">${esc(carLabel)}</span>
+          ${car ? `<button onclick="navigate('car','${car.id}')" style="margin-left:auto;background:transparent;border:none;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;">View Car →</button>` : ''}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div style="font-size:12px;color:var(--muted);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6.06 6.06l1.41-1.41a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            ${esc(inq.phone)}
+          </div>
+          ${inq.email ? `<div style="font-size:12px;color:var(--muted);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            ${esc(inq.email)}
+          </div>` : ''}
+        </div>
+        ${inq.message ? `<div style="margin-top:10px;font-size:13px;color:var(--muted);background:var(--surface);border-radius:8px;padding:10px 12px;line-height:1.6;">"${esc(inq.message)}"</div>` : ''}
+      </div>`;
+    }).join('');
+
+    return `
+      <div style="background:var(--surface);border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:15px;font-weight:800;">${inquiries.length} Lead${inquiries.length !== 1 ? 's' : ''}</div>
+          <div style="font-size:12px;color:var(--muted);">From gogofleet.app/cars</div>
+        </div>
+        <a href="https://gogofleet.app/cars" target="_blank" style="font-size:12px;color:var(--muted);text-decoration:none;border:1px solid var(--border);border-radius:20px;padding:6px 12px;">View Marketplace →</a>
+      </div>
+      ${rows}`;
+
+  } catch(e) {
+    return `<div class="empty-state"><div class="empty-title">Could not load inquiries</div><div class="empty-sub">${esc(e.message)}</div></div>`;
+  }
+}
+
+
+
+function updateInquiriesBadge() {
+  if (!isOwner()) return;
+  const btn = document.getElementById('inquiries-nav-btn');
+  if (!btn) return;
+  // Fetch recent inquiries count (last 7 days)
+  const since = new Date(Date.now() - 7 * 86400000).toISOString();
+  fetch(`${SB_URL}/rest/v1/inquiries?created_at=gte.${since}&select=id`, {
+    headers: { ...authHeaders(), 'Accept': 'application/json', 'Prefer': 'count=exact' }
+  }).then(r => {
+    const count = parseInt(r.headers.get('content-range')?.split('/')[1] || '0');
+    let badge = btn.querySelector('.inq-badge');
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'inq-badge';
+        badge.style.cssText = 'position:absolute;top:4px;right:4px;background:#F2F2F2;color:#080808;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px;';
+        btn.style.position = 'relative';
+        btn.appendChild(badge);
+      }
+      badge.textContent = count > 99 ? '99+' : count;
+    } else if (badge) {
+      badge.remove();
+    }
+  }).catch(() => {});
+}
+
+
+async function saveOwnerProfile() {
+  const bizname = val('prof-bizname');
+  const city = val('prof-city');
+  const state = (val('prof-state')||'').toUpperCase();
+  const phone = val('prof-phone');
+  try {
+    showSync('Saving…');
+    await dbUpdate('team_members', myProfile.id, {
+      biz_name: bizname,
+      city,
+      state,
+      contact_phone: phone
+    });
+    myProfile.biz_name = bizname;
+    myProfile.city = city;
+    myProfile.state = state;
+    myProfile.contact_phone = phone;
+    showToast('Profile saved ✓');
+    hideSyncBar();
+  } catch(e) {
+    showToast('Save failed', 'error');
+  }
+}
+
+
+/* ═══════════════════════════════════════
+   PUSH NOTIFICATIONS (PWA)
+═══════════════════════════════════════ */
+let pushEnabled = false;
+
+async function initPushNotifications() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    pushEnabled = !!sub;
+    updatePushUI();
+  } catch(e) {}
+}
+
+function updatePushUI() {
+  const banner = document.getElementById('push-banner');
+  if (banner) banner.style.display = pushEnabled ? 'none' : 'flex';
+}
+
+async function enablePushNotifications() {
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      showToast('Notifications blocked — enable in browser settings', 'error');
+      return;
+    }
+    pushEnabled = true;
+    updatePushUI();
+    showToast('Notifications enabled ✓');
+    // Store preference
+    localStorage.setItem('gogo-push-enabled', 'true');
+  } catch(e) {
+    showToast('Could not enable notifications', 'error');
+  }
+}
+
+// Send a local push notification (works when app is open)
+function sendLocalNotification(title, body, url) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.showNotification(title, {
+        body,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        data: { url: url || '/app' },
+        vibrate: [100, 50, 100],
+      });
+    });
+  } catch(e) {}
+}
+
+// Check for events that should trigger notifications
+function checkNotificationTriggers() {
+  if (!pushEnabled || Notification.permission !== 'granted') return;
+  const today = new Date().toISOString().slice(0,10);
+
+  // Overdue payments
+  state.renters.filter(r => r.active).forEach(r => {
+    const dl = Math.ceil((new Date(r.contract_end) - new Date()) / 86400000);
+    const weeklyTotal = +r.weekly_rent + +r.protection_fee;
+    const paid = state.payments.filter(p => p.car_id === r.car_id).length;
+    const weekNum = Math.min(4, Math.floor((new Date() - new Date(r.contract_start + 'T00:00:00')) / 86400000 / 7) + 1);
+    if (paid < weekNum) {
+      sendLocalNotification(
+        'Payment overdue',
+        `${r.name} — Week ${weekNum} of $${weeklyTotal} not received`,
+        '/app'
+      );
+    }
+    // Contract expiring in 2 days
+    if (dl === 2) {
+      sendLocalNotification(
+        'Contract expiring soon',
+        `${r.name}'s contract ends in 2 days`,
+        '/app'
+      );
+    }
+  });
 }
 
 /* ═══════════════════════════════════════
