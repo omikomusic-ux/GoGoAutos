@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080808">
+<title>Get Started — GOGO Fleet</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:#080808; --surface:#111111; --card:#181818; --border:#2C2C2C;
+  --text:#F2F2F2; --muted:#7A7A7A; --dim:#222222; --accent:#FFFFFF;
+}
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; }
+.signup-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:32px 28px; width:100%; max-width:420px; }
+.signup-logo { display:flex; justify-content:center; margin-bottom:24px; color:var(--text); }
+.signup-title { font-size:22px; font-weight:900; text-align:center; margin-bottom:6px; }
+.signup-sub { font-size:13px; color:var(--muted); text-align:center; margin-bottom:28px; }
+.form-group { margin-bottom:14px; }
+.form-label { font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px; }
+.form-input { width:100%; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 14px; font-size:15px; color:var(--text); outline:none; transition:border-color .15s; -webkit-appearance:none; }
+.form-input:focus { border-color:var(--accent); }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.btn-primary { width:100%; background:var(--accent); color:var(--bg); border:none; border-radius:12px; padding:14px; font-size:15px; font-weight:800; cursor:pointer; margin-top:8px; transition:opacity .15s; }
+.btn-primary:hover { opacity:.85; }
+.btn-primary:disabled { opacity:.4; cursor:not-allowed; }
+.divider { display:flex; align-items:center; gap:10px; margin:20px 0; }
+.divider-line { flex:1; height:1px; background:var(--border); }
+.divider-text { font-size:12px; color:var(--muted); }
+.error-msg { background:#FFFFFF10; border:1px solid #FFFFFF22; border-radius:8px; padding:10px 14px; font-size:13px; color:#BBBBBB; margin-bottom:14px; display:none; }
+.success-screen { text-align:center; display:none; }
+.success-icon { font-size:48px; margin-bottom:16px; }
+.success-title { font-size:20px; font-weight:800; margin-bottom:8px; }
+.success-sub { font-size:14px; color:var(--muted); margin-bottom:24px; line-height:1.6; }
+.step-indicator { display:flex; gap:8px; justify-content:center; margin-bottom:24px; }
+.step-dot { width:8px; height:8px; border-radius:50%; background:var(--border); transition:background .2s; }
+.step-dot.active { background:var(--accent); }
+.terms-note { font-size:11px; color:var(--muted); text-align:center; margin-top:14px; line-height:1.6; }
+.terms-note a { color:var(--muted); }
+.login-link { text-align:center; margin-top:20px; font-size:13px; color:var(--muted); }
+.login-link a { color:var(--text); font-weight:600; text-decoration:none; }
+.spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(0,0,0,.3); border-top-color:var(--bg); border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:6px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="signup-card">
+  <div class="signup-logo">
+    <svg width="100" height="40" viewBox="0 0 280 112" xmlns="http://www.w3.org/2000/svg">
+      <style>.ls{fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;}.wl{font-family:-apple-system,sans-serif;font-weight:800;font-size:16px;dominant-baseline:central;text-anchor:middle;fill:currentColor;}</style>
+      <path class="ls" d="M52 62 L56 62 L64 50 L74 43 L108 40 L132 36 L158 35 L174 37 L186 43 L194 51 L196 62 L178 62"/>
+      <path class="ls" d="M52 62 L48 62 L44 58 L43 54 L45 49 L50 46 L56 45 L64 50"/>
+      <path class="ls" d="M196 58 L199 53 L200 49 L197 44 L192 42 L186 43"/>
+      <path class="ls" d="M82 40 L88 26 L100 22 L152 21 L166 24 L175 31 L180 40"/>
+      <path class="ls" d="M89 27 L97 24 L112 22 L124 23 L125 40 L88 40 Z"/>
+      <path class="ls" d="M128 23 L152 22 L164 24 L172 29 L177 38 L128 38 Z"/>
+      <circle class="ls" cx="72" cy="62" r="18"/>
+      <text class="wl" x="65" y="63">G</text><text class="wl" x="79" y="63">O</text>
+      <circle class="ls" cx="178" cy="62" r="18"/>
+      <text class="wl" x="171" y="63">G</text><text class="wl" x="185" y="63">O</text>
+    </svg>
+  </div>
+
+  <!-- Step indicators -->
+  <div class="step-indicator">
+    <div class="step-dot active" id="dot-1"></div>
+    <div class="step-dot" id="dot-2"></div>
+    <div class="step-dot" id="dot-3"></div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-msg" id="error-msg"></div>
+
+  <!-- Step 1: Account details -->
+  <div id="step-1">
+    <div class="signup-title">Create your account</div>
+    <div class="signup-sub">Start managing your fleet in minutes</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">First Name</label>
+        <input class="form-input" id="s-fname" type="text" placeholder="Carlos" autocapitalize="words">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Last Name</label>
+        <input class="form-input" id="s-lname" type="text" placeholder="Rivera" autocapitalize="words">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" id="s-email" type="email" placeholder="you@email.com" inputmode="email" autocapitalize="none">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-input" id="s-password" type="password" placeholder="At least 8 characters">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Phone</label>
+      <input class="form-input" id="s-phone" type="tel" placeholder="713-555-0000" inputmode="tel">
+    </div>
+    <button class="btn-primary" onclick="goStep2()">Continue →</button>
+    <div class="login-link">Already have an account? <a href="/app">Sign in</a></div>
+  </div>
+
+  <!-- Step 2: Business details -->
+  <div id="step-2" style="display:none;">
+    <div class="signup-title">Your business</div>
+    <div class="signup-sub">Tell us about your fleet</div>
+    <div class="form-group">
+      <label class="form-label">Business Name (optional)</label>
+      <input class="form-input" id="s-bizname" type="text" placeholder="Carlos Fleet LLC" autocapitalize="words">
+    </div>
+    <div class="form-group">
+      <label class="form-label">City</label>
+      <input class="form-input" id="s-city" type="text" placeholder="Houston" autocapitalize="words" value="Houston">
+    </div>
+    <div class="form-group">
+      <label class="form-label">State</label>
+      <input class="form-input" id="s-state" type="text" placeholder="TX" value="TX" maxlength="2">
+    </div>
+    <div class="form-group">
+      <label class="form-label">How many vehicles do you have?</label>
+      <select class="form-input" id="s-fleet-size">
+        <option value="1-5">1–5 vehicles</option>
+        <option value="6-10">6–10 vehicles</option>
+        <option value="11-20">11–20 vehicles</option>
+        <option value="20+">20+ vehicles</option>
+      </select>
+    </div>
+    <button class="btn-primary" onclick="goStep3()">Continue →</button>
+    <button onclick="goStep1()" style="width:100%;background:transparent;border:none;color:var(--muted);padding:10px;font-size:13px;cursor:pointer;margin-top:6px;">← Back</button>
+  </div>
+
+  <!-- Step 3: Payment -->
+  <div id="step-3" style="display:none;">
+    <div class="signup-title">Almost there</div>
+    <div class="signup-sub">We collect a card to prevent abuse. You won't be charged — GOGO Fleet is free for early users.</div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px;">Free Plan</div>
+      <div style="font-size:24px;font-weight:900;margin-bottom:4px;">$0<span style="font-size:14px;color:var(--muted);font-weight:400;">/month</span></div>
+      <div style="font-size:12px;color:var(--muted);">Full access · All features · No charge until we notify you</div>
+    </div>
+    <div id="card-element-wrap" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;min-height:46px;">
+      <div id="card-element"></div>
+    </div>
+    <button class="btn-primary" id="signup-submit-btn" onclick="submitSignup()">Create My Fleet →</button>
+    <div class="terms-note">
+      By creating an account you agree to our <a href="/privacy" target="_blank">Privacy Policy</a>.<br>
+      Your card is stored securely by Stripe. You will not be charged today.
+    </div>
+    <button onclick="goStep2()" style="width:100%;background:transparent;border:none;color:var(--muted);padding:10px;font-size:13px;cursor:pointer;margin-top:6px;">← Back</button>
+  </div>
+
+  <!-- Success -->
+  <div class="success-screen" id="success-screen">
+    <div class="success-icon">🎉</div>
+    <div class="success-title">Welcome to GOGO Fleet!</div>
+    <div class="success-sub">Your account is ready. You'll be redirected to your fleet dashboard in a moment.</div>
+    <button class="btn-primary" onclick="window.location.href='/app'">Go to My Fleet →</button>
+  </div>
+</div>
+
+<script src="https://js.stripe.com/v3/" crossorigin="anonymous"></script>
+<script>
+const SB_URL = 'https://pbglpxipzidwhaxganzx.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBiZ2xweGlwemlkd2hheGdhbnp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMDU4NTEsImV4cCI6MjA4OTU4MTg1MX0.kMncp_z2-lzotOho-Yw-8uQI5hkya2SY96ahADQW2Jk';
+const STRIPE_PK = 'pk_live_51TDTneG3DXCsLmgEJP4dwKG7gTdtPA10Tv5VSIZ3jLNERWMdWHM4CSfhCPewINTCTWPm9P8kp0pvA3rcZJwM7vD300Trhee6T1';
+
+let stripe, cardElement, signupData = {};
+
+// Init Stripe
+window.addEventListener('load', () => {
+  try {
+    if (typeof Stripe === 'undefined') {
+      document.getElementById('card-element-wrap').innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px;">Card collection unavailable — you can still create your account.</div>';
+      return;
+    }
+    stripe = Stripe(STRIPE_PK);
+    const elements = stripe.elements({
+      appearance: {
+        theme: 'night',
+        variables: {
+          colorBackground: '#181818',
+          colorText: '#F2F2F2',
+          colorTextPlaceholder: '#7A7A7A',
+          borderRadius: '8px',
+          fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+        }
+      }
+    });
+    cardElement = elements.create('card', {
+      style: {
+        base: { fontSize:'15px', color:'#F2F2F2', '::placeholder':{ color:'#7A7A7A' } }
+      }
+    });
+    cardElement.mount('#card-element');
+  } catch(e) {
+    console.warn('Stripe init failed:', e);
+    document.getElementById('card-element-wrap').innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px;">Card collection unavailable — you can still create your account.</div>';
+  }
+});
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+function setStep(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById('step-'+i).style.display = i===n ? 'block' : 'none';
+    document.getElementById('dot-'+i).classList.toggle('active', i<=n);
+  });
+  document.getElementById('success-screen').style.display = 'none';
+}
+
+function goStep1() { setStep(1); }
+function goStep2() {
+  const fname = document.getElementById('s-fname').value.trim();
+  const email = document.getElementById('s-email').value.trim();
+  const password = document.getElementById('s-password').value;
+  if (!fname) { showError('Please enter your first name'); return; }
+  if (!email || !email.includes('@')) { showError('Please enter a valid email'); return; }
+  if (password.length < 8) { showError('Password must be at least 8 characters'); return; }
+  signupData.fname = fname;
+  signupData.lname = document.getElementById('s-lname').value.trim();
+  signupData.email = email;
+  signupData.password = password;
+  signupData.phone = document.getElementById('s-phone').value.trim();
+  setStep(2);
+}
+
+function goStep3() {
+  signupData.bizname = document.getElementById('s-bizname').value.trim();
+  signupData.city = document.getElementById('s-city').value.trim() || 'Houston';
+  signupData.state = document.getElementById('s-state').value.trim() || 'TX';
+  signupData.fleetSize = document.getElementById('s-fleet-size').value;
+  setStep(3);
+}
+
+async function submitSignup() {
+  const btn = document.getElementById('signup-submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Creating your fleet…';
+
+  try {
+    // 1. Optionally save card via Stripe SetupIntent
+    let paymentMethodId = null;
+    if (stripe && cardElement) {
+      try {
+        const setupRes = await fetch('https://pbglpxipzidwhaxganzx.supabase.co/functions/v1/create-setup-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_KEY },
+          body: JSON.stringify({ email: signupData.email })
+        });
+        const setupData = await setupRes.json();
+        if (setupData.client_secret) {
+          const { setupIntent, error: stripeError } = await stripe.confirmCardSetup(setupData.client_secret, {
+            payment_method: { card: cardElement, billing_details: { name: signupData.fname + ' ' + signupData.lname, email: signupData.email } }
+          });
+          if (stripeError) { showError(stripeError.message); btn.disabled=false; btn.textContent='Create My Fleet →'; return; }
+          paymentMethodId = setupIntent.payment_method;
+        }
+      } catch(e) {
+        console.warn('Card setup skipped:', e);
+      }
+    }
+
+    // 2. Create Supabase auth account
+    const authRes = await fetch(SB_URL + '/auth/v1/signup', {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: signupData.email,
+        password: signupData.password,
+        data: {
+          name: signupData.fname + ' ' + (signupData.lname || ''),
+          role: 'owner',
+          biz_name: signupData.bizname,
+          city: signupData.city,
+          state: signupData.state,
+          fleet_size: signupData.fleetSize,
+          phone: signupData.phone,
+          stripe_payment_method: paymentMethodId,
+        }
+      })
+    });
+    const authData = await authRes.json();
+    if (authData.error) throw new Error(authData.error.message || authData.msg || 'Signup failed');
+
+    // 3. Insert team_members row as owner
+    if (authData.user?.id) {
+      await fetch(SB_URL + '/rest/v1/team_members', {
+        method: 'POST',
+        headers: {
+          'apikey': SB_KEY,
+          'Authorization': 'Bearer ' + SB_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          user_id: authData.user.id,
+          email: signupData.email,
+          name: signupData.fname + ' ' + (signupData.lname || ''),
+          role: 'owner',
+          owner_id: authData.user.id,
+          last_seen: new Date().toISOString()
+        })
+      });
+    }
+
+    // 4. Store session and redirect
+    if (authData.session) {
+      localStorage.setItem('gogoautos-session', JSON.stringify(authData.session));
+    }
+
+    // Show success
+    [1,2,3].forEach(i => { document.getElementById('step-'+i).style.display='none'; });
+    document.getElementById('success-screen').style.display = 'block';
+    [1,2,3].forEach(i => document.getElementById('dot-'+i).classList.add('active'));
+
+    setTimeout(() => { window.location.href = '/app'; }, 2500);
+
+  } catch(e) {
+    showError(e.message || 'Something went wrong. Please try again.');
+    btn.disabled = false;
+    btn.textContent = 'Create My Fleet →';
+  }
+}
+</script>
+</body>
+</html>
