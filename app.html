@@ -847,11 +847,35 @@ function bootApp() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   initTheme();
-  loadData().then(() => {
-    render();
-    updateTrackingNavVisibility();
-    setInterval(silentRefresh, 20000);
+  // Ensure we have a valid access token before loading data
+  ensureValidToken().then(() => {
+    loadData().then(() => {
+      render();
+      updateTrackingNavVisibility();
+      setInterval(silentRefresh, 20000);
+    });
   });
+}
+
+async function ensureValidToken() {
+  if (!currentSession) return;
+  // Check if token expires within 5 minutes
+  const exp = currentSession.expires_at || currentSession.user?.exp;
+  if (exp && Date.now() / 1000 > exp - 300) {
+    try {
+      const r = await fetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
+        method: 'POST',
+        headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: currentSession.refresh_token })
+      });
+      if (r.ok) {
+        const newSession = await r.json();
+        currentSession = newSession;
+        currentUser = newSession.user;
+        localStorage.setItem('gogoautos-session', JSON.stringify(newSession));
+      }
+    } catch(e) { console.warn('Token refresh failed:', e); }
+  }
 }
 function updateTrackingNavVisibility() {
   const btn = document.getElementById('tracking-nav-btn');
@@ -874,7 +898,15 @@ async function loadData() {
     showSync('Synced', 'ok');
     setTimeout(hideSyncBar, 2000);
     updateAlertBadge();
-  } catch(e) { showSync('Sync error', 'error'); console.error(e); }
+  } catch(e) {
+    showSync('Sync error', 'error');
+    console.error('loadData error:', e.message, e);
+    // If it looks like an auth error, try refreshing token
+    if (e.message && (e.message.includes('JWT') || e.message.includes('401') || e.message.includes('403'))) {
+      await ensureValidToken();
+      setTimeout(() => loadData(), 1000);
+    }
+  }
 }
 
 async function silentRefresh() {
