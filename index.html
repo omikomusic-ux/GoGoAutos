@@ -3316,6 +3316,43 @@ async function loadRenterDocs(renterId) {
   el.innerHTML = html || '<div style="font-size:12px;color:var(--muted);">No documents found</div>';
 }
 
+
+/* ═══════════════════════════════════════
+   RENTER ONBOARDING SMS
+═══════════════════════════════════════ */
+async function sendOnboardingSMS(renter, car) {
+  try {
+    const pin = renter.phone.replace(/\D/g,'').slice(-4);
+    const firstName = renter.name.split(' ')[0];
+    const vehicle = car ? car.year + ' ' + car.make + ' ' + car.model : 'your vehicle';
+    const weeklyTotal = +renter.weekly_rent + +renter.protection_fee;
+
+    const message =
+      'Hi ' + firstName + '! Your GOGO Fleet rental is confirmed. ' +
+      'Vehicle: ' + vehicle + '. ' +
+      'Weekly payment: $' + weeklyTotal + ' (due every 7 days). ' +
+      'Access your portal at gogofleet.app/renter — your PIN is ' + pin + '. ' +
+      'Questions? Call or text this number.';
+
+    const res = await fetch(FUNCTIONS_URL + '/send-sms', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SB_KEY,
+      },
+      body: JSON.stringify({ to: renter.phone, message }),
+    });
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    console.log('Onboarding SMS sent:', data.sid);
+    return true;
+  } catch(e) {
+    console.error('SMS failed:', e.message);
+    return false;
+  }
+}
+
 /* ═══════════════════════════════════════
    SERVICE WORKER
 ═══════════════════════════════════════ */
