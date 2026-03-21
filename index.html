@@ -3198,6 +3198,52 @@ function checkStripeReturn() {
 }
 
 
+
+/* ═══════════════════════════════════════
+   CONTRACT VIEWER (OWNER SIDE)
+═══════════════════════════════════════ */
+async function viewSignedContract(renterId, contractStart) {
+  const metaPath = `contracts/${renterId}/signed.json`;
+  const sigPath = `contracts/${renterId}/signature_${contractStart}.png`;
+  const sigUrl = SB_URL + '/storage/v1/object/public/vehicle-photos/' + sigPath;
+  const metaUrl = SB_URL + '/storage/v1/object/public/vehicle-photos/' + metaPath;
+
+  try {
+    const r = await fetch(metaUrl, {
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + (currentSession?.access_token || SB_KEY) }
+    });
+    if (!r.ok) { showToast('No signed contract found', 'error'); return; }
+    const meta = await r.json();
+
+    document.getElementById('sheet-container').innerHTML = `
+      <div class="sheet-overlay" id="sheet-overlay" onclick="if(event.target.id==='sheet-overlay')closeSheet()">
+        <div class="sheet">
+          <div class="sheet-handle"></div>
+          <div class="sheet-header">
+            <div class="sheet-title">Signed Contract</div>
+            <button class="sheet-close" onclick="closeSheet()">x</button>
+          </div>
+          <div class="sheet-body">
+            <div style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:14px;">
+              <div style="font-size:13px;font-weight:700;margin-bottom:8px;">${esc(meta.renter_name)}</div>
+              <div style="font-size:12px;color:var(--muted);">Signed: ${fmtDate(meta.signed_at?.slice(0,10))}</div>
+              <div style="font-size:12px;color:var(--muted);">Contract: ${fmtDate(meta.contract_start)} → ${fmtDate(meta.contract_end)}</div>
+            </div>
+            <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Signature</div>
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:14px;">
+              <img src="${sigUrl}" style="width:100%;display:block;" alt="Signature" onerror="this.parentElement.innerHTML='<div style=padding:20px;text-align:center;color:var(--muted);>Signature image not available</div>'">
+            </div>
+            <div style="font-size:11px;color:var(--dim);text-align:center;">
+              Electronically signed by ${esc(meta.renter_name)} on ${new Date(meta.signed_at).toLocaleString()}
+            </div>
+          </div>
+        </div>
+      </div>`;
+  } catch(e) {
+    showToast('Could not load contract', 'error');
+  }
+}
+
 /* ═══════════════════════════════════════
    SERVICE WORKER
 ═══════════════════════════════════════ */
