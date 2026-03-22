@@ -470,7 +470,8 @@
 <div id="renter-portal">
   <div id="rp-topbar">
     <div id="rp-logo" style="color:var(--text);display:flex;align-items:center;"><svg width="80" height="32" viewBox="0 0 280 112" xmlns="http://www.w3.org/2000/svg"><style>.ls{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}.wl{font-family:-apple-system,sans-serif;font-weight:800;font-size:16px;dominant-baseline:central;text-anchor:middle;fill:currentColor;}</style><path class="ls" d="M52 62 L56 62 L64 50 L74 43 L108 40 L132 36 L158 35 L174 37 L186 43 L194 51 L196 62 L178 62"/><path class="ls" d="M52 62 L48 62 L44 58 L43 54 L45 49 L50 46 L56 45 L64 50"/><path class="ls" d="M196 58 L199 53 L200 49 L197 44 L192 42 L186 43"/><path class="ls" d="M82 40 L88 26 L100 22 L152 21 L166 24 L175 31 L180 40"/><path class="ls" d="M89 27 L97 24 L112 22 L124 23 L125 40 L88 40 Z"/><path class="ls" d="M128 23 L152 22 L164 24 L172 29 L177 38 L128 38 Z"/><circle class="ls" cx="72" cy="62" r="18"/><text class="wl" x="65" y="63">G</text><text class="wl" x="79" y="63">O</text><circle class="ls" cx="178" cy="62" r="18"/><text class="wl" x="171" y="63">G</text><text class="wl" x="185" y="63">O</text></svg></div>
-    <div id="rp-topbar-right" style="font-size:12px;color:var(--muted);font-weight:600;"></div>
+    <button id="theme-toggle-btn" onclick="toggleTheme()" style="background:transparent;border:none;cursor:pointer;color:var(--text);padding:4px;display:flex;align-items:center;"></button>
+  <div id="rp-topbar-right" style="font-size:12px;color:var(--muted);font-weight:600;"></div>
   </div>
   <div id="rp-scroll">
     <div id="rp-main" class="rp-content"></div>
@@ -540,7 +541,8 @@ function setLang(lang) {
   localStorage.setItem('gogo-lang', lang);
   updateLangFab();
   if (rpState.authed) {
-    renderRPPage();
+    // Full re-render — updates nav labels, topbar, and page content
+    rpShowDashboard();
   } else {
     renderRPLogin();
   }
