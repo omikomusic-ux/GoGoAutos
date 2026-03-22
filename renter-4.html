@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#080808">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GOGO Fleet">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>GOGO Fleet — Renter Portal</title>
+<style>
+
+  :root {
+    --bg:#080808;--surface:#111111;--card:#181818;--border:#2C2C2C;
+    --text:#F2F2F2;--muted:#7A7A7A;--dim:#333333;
+    --accent:#FFFFFF;--accent2:#CCCCCC;
+    --orange:#FFFFFF;--gold:#BBBBBB;--green:#E8E8E8;
+    --red:#AAAAAA;--blue:#CCCCCC;--purple:#999999;
+    --pos:#E8E8E8;--neg:#888888;--warn:#AAAAAA;
+    --safe-top:env(safe-area-inset-top,0px);
+    --safe-bottom:env(safe-area-inset-bottom,0px);
+  }
+  /* ── LIGHT MODE ── */
+  body.light-mode {
+    --bg:#F0F0F0;--surface:#FAFAFA;--card:#FFFFFF;--border:#DEDEDE;
+    --text:#111111;--muted:#888888;--dim:#CCCCCC;
+    --accent:#111111;--accent2:#444444;
+    --orange:#111111;--gold:#555555;--green:#222222;
+    --red:#666666;--blue:#444444;--purple:#666666;
+    --pos:#222222;--neg:#888888;--warn:#666666;
+    background-image:radial-gradient(ellipse 80% 50% at 50% -10%,#DDDDDD 0%,transparent 70%);
+  }
+  body.light-mode #topbar { background:rgba(240,240,240,0.95); border-bottom:1px solid #DEDEDE; }
+  body.light-mode #bottom-nav { background:rgba(245,245,245,0.98); border-top:1px solid #DEDEDE; }
+  body.light-mode .card { background:linear-gradient(160deg,#FFFFFF,#F5F5F5); border:1px solid #E0E0E0; }
+  body.light-mode .kpi { background:linear-gradient(160deg,#FFFFFF,#F5F5F5); border:1px solid #E0E0E0; }
+  body.light-mode .auth-card { background:linear-gradient(160deg,#FFFFFF,#F8F8F8); border:1px solid #E0E0E0; }
+  body.light-mode .sheet { background:#FAFAFA; }
+  body.light-mode .sheet-header { background:#FAFAFA; border-bottom:1px solid #E8E8E8; }
+  body.light-mode .form-input { background:#FFFFFF !important; border:1px solid #DEDEDE !important; color:#111111 !important; }
+  body.light-mode .form-input:focus { border-color:#111111 !important; box-shadow:0 0 0 2px rgba(0,0,0,.08) !important; }
+  body.light-mode .btn-primary { background:#111111; color:#FFFFFF; }
+  body.light-mode .btn-primary:hover { background:#333333; }
+  body.light-mode .btn-primary.green { background:#333333; color:#FFFFFF; }
+  body.light-mode .btn-primary.red { background:#888888; color:#FFFFFF; }
+  body.light-mode .btn-secondary { border:1px solid #DEDEDE; color:#888888; }
+  body.light-mode .profile-banner { background:linear-gradient(135deg,#F5F5F5,#ECECEC); border:1px solid #DEDEDE; }
+  body.light-mode .tab-bar { background:#EEEEEE; }
+  body.light-mode .tab.active { background:#FFFFFF; color:#111111; }
+  body.light-mode .tab { color:#AAAAAA; }
+  body.light-mode .action-btn { background:#F5F5F5; border:1px solid #E0E0E0; color:#666666; }
+  body.light-mode .action-btn.green { background:#F0F0F0; border-color:#AAAAAA; color:#333333; }
+  body.light-mode .action-btn.orange { background:#EBEBEB; border-color:#999999; color:#111111; }
+  body.light-mode .action-btn.red { background:#F0F0F0; border-color:#BBBBBB; color:#888888; }
+  body.light-mode .role-owner { background:#11111115; border:1px solid #11111144; color:#111111; }
+  body.light-mode .role-manager { background:#44444415; border:1px solid #44444444; color:#444444; }
+  body.light-mode .role-viewer { background:#88888815; border:1px solid #88888844; color:#888888; }
+  body.light-mode .pill-rented { background:#F0F0F0; border:1px solid #333333; color:#222222; }
+  body.light-mode .pill-available { background:#F0F0F0; border:1px solid #666666; color:#444444; }
+  body.light-mode .pill-maintenance { background:#F0F0F0; border:1px solid #AAAAAA; color:#666666; }
+  body.light-mode .pill-inactive { background:#F5F5F5; border:1px solid #CCCCCC; color:#AAAAAA; }
+  body.light-mode .tracking-vehicle-card { background:linear-gradient(160deg,#FFFFFF,#F5F5F5); border:1px solid #E0E0E0; }
+  body.light-mode #sync-bar.ok { background:#F0F0F0; color:#444444; border-bottom:1px solid #CCCCCC; }
+  body.light-mode .summary-row { background:#F5F5F5; }
+  body.light-mode .loading-spinner { border-color:#DEDEDE; border-top-color:#111111; }
+  body.light-mode #auth-screen { background:#F0F0F0; }
+  body.light-mode .photo-upload-zone { border:1.5px dashed #CCCCCC; background:#FAFAFA; }
+  body.light-mode .photo-upload-zone:hover { border-color:#888888; background:#F5F5F5; }
+  body.light-mode .bouncie-auth-card { background:linear-gradient(160deg,#FFFFFF,#F5F5F5); border:1px solid #E0E0E0; }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;overflow:hidden;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue','Segoe UI',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overscroll-behavior:none;background-image:radial-gradient(ellipse 80% 50% at 50% -10%,#2A2A2A 0%,transparent 70%);}
+  input,select,textarea,button{font-family:inherit;}
+  ::-webkit-scrollbar{width:3px;height:3px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--dim);border-radius:2px;}
+
+  /* ── AUTH SCREEN ── */
+  #auth-screen{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;overflow-y:auto;}
+  .auth-logo{display:flex;justify-content:center;align-items:center;margin-bottom:16px;color:var(--text);}
+  .auth-tagline{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:24px;text-align:center;display:none;}
+  .auth-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px 24px;width:100%;max-width:400px;}
+  .auth-title{font-size:20px;font-weight:800;margin-bottom:4px;}
+  .auth-sub{font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.5;}
+  .auth-error{background:#1E1E1E20;border:1px solid var(--red);color:var(--red);padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:16px;display:none;line-height:1.5;}
+  .auth-link{text-align:center;margin-top:16px;font-size:13px;color:var(--muted);}
+  .auth-link button{background:transparent;border:none;color:var(--orange);font-size:13px;font-weight:600;cursor:pointer;padding:0;}
+
+  /* ── LOADING ── */
+  #loading-screen{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background-image:radial-gradient(ellipse 80% 50% at 50% -10%,#2A2A2A 0%,transparent 70%);}
+  .loading-logo{font-size:32px;font-weight:900;background:linear-gradient(135deg,#FFFFFF,#BBBBBB);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .loading-spinner{width:32px;height:32px;border:3px solid var(--dim);border-top-color:#FFFFFF;border-radius:50%;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ── LAYOUT ── */
+  #app{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;display:none;}
+  #topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:calc(var(--safe-top) + 12px) 18px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:10;}
+  .topbar-logo{font-size:18px;font-weight:900;background:linear-gradient(135deg,#FFFFFF,#BBBBBB);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-0.5px;}
+  .topbar-title{font-size:17px;font-weight:700;color:var(--text);}
+  .topbar-back{background:transparent;border:none;color:var(--orange);font-size:15px;font-weight:600;padding:4px 0;cursor:pointer;}
+  #scroll-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;}
+  .page-content{padding:18px 16px calc(var(--safe-bottom) + 90px);animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+  /* ── SYNC BAR ── */
+  #sync-bar{color:white;text-align:center;font-size:11px;font-weight:700;padding:6px;letter-spacing:1px;display:none;}
+  #sync-bar.show{display:block;background:#FFFFFF;}
+  #sync-bar.ok{display:block;background:#1E1E1E;color:var(--green);border-bottom:1px solid var(--green);}
+  #sync-bar.error{display:block;background:#555555;}
+
+  /* ── BOTTOM NAV ── */
+  #bottom-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(8,8,8,.98);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:1px solid #222222;padding-bottom:var(--safe-bottom);display:flex;z-index:100;}
+  .nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 2px;background:transparent;border:none;color:var(--muted);font-size:9px;font-weight:500;gap:3px;cursor:pointer;transition:color .15s;position:relative;}
+  .nav-tab.active{color:var(--orange);}
+  .nav-icon{display:flex;align-items:center;justify-content:center;width:22px;height:22px;line-height:1;}
+  .nav-badge{position:absolute;top:6px;right:calc(50% - 18px);background:#555555;color:white;font-size:9px;font-weight:800;border-radius:10px;padding:1px 5px;min-width:16px;text-align:center;}
+
+  /* ── CARDS ── */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:14px;}
+
+  /* ── KPI ── */
+  .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;}
+  .kpi-label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+  .kpi-value{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-0.5px;line-height:1;}
+  .kpi-sub{font-size:10px;color:var(--dim);margin-top:4px;}
+
+  /* ── PILLS ── */
+  .pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;}
+  .pill-rented{background:#1E1E1E;border:1px solid #E8E8E8;color:#E8E8E8;}
+  .pill-available{background:#1E1E1E;border:1px solid #CCCCCC;color:#CCCCCC;}
+  .pill-maintenance{background:#2E1A00;border:1px solid #BBBBBB;color:#BBBBBB;}
+  .pill-inactive{background:#111111;border:1px solid #555555;color:#555555;}
+  .role-owner{background:#FFFFFF22;border:1px solid #FFFFFF55;color:#FFFFFF;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:1px;text-transform:uppercase;}
+  .role-manager{background:#AAAAAA22;border:1px solid #AAAAAA55;color:#AAAAAA;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:1px;text-transform:uppercase;}
+  .role-viewer{background:#99999922;border:1px solid #99999955;color:#999999;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;letter-spacing:1px;text-transform:uppercase;}
+
+  /* ── LIST ROWS ── */
+  .list-row{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;cursor:pointer;-webkit-tap-highlight-color:rgba(255,107,43,.1);}
+  .list-row:last-child{border-bottom:none;}
+  .list-row:active{background:var(--surface);}
+  .list-row-content{flex:1;min-width:0;}
+  .list-row-title{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .list-row-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+  .list-row-right{text-align:right;flex-shrink:0;}
+  .list-row-val{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .chevron{color:var(--dim);font-size:14px;flex-shrink:0;}
+
+  /* ── SECTION TITLE ── */
+  .section-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:18px 0 10px;}
+
+  /* ── ALERT CARDS ── */
+  .alert-card{background:var(--card);border-radius:12px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;border-left:3px solid;cursor:pointer;}
+  .alert-icon{font-size:18px;flex-shrink:0;line-height:1.2;}
+
+  /* ── PROGRESS BAR ── */
+  .progress-track{height:4px;background:var(--dim);border-radius:2px;overflow:hidden;margin-top:8px;}
+  .progress-fill{height:100%;border-radius:2px;background:#FFFFFF;}
+
+  /* ── ACTION BUTTONS ── */
+  .action-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .action-btn{padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:13px;font-weight:600;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .action-btn:active{transform:scale(.96);}
+  .ab-icon{font-size:22px;}
+  .action-btn.green{background:#1E1E1E20;border-color:#E8E8E855;color:#E8E8E8;}
+  .action-btn.gold{background:#2E1A0020;border-color:#BBBBBB55;color:#BBBBBB;}
+  .action-btn.orange{background:#FFFFFF20;border-color:#FFFFFF55;color:#FFFFFF;}
+  .action-btn.red{background:#AAAAAA20;border-color:#AAAAAA55;color:#AAAAAA;}
+  .action-btn.dim{background:transparent;border-color:var(--dim);color:var(--muted);}
+
+  /* ── FORMS ── */
+  .form-group{margin-bottom:16px;}
+  .form-label{display:block;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+  .form-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:15px;color:var(--text);outline:none;-webkit-appearance:none;transition:border-color .15s,box-shadow .15s;}
+  .form-input:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,107,43,.15);}
+  select.form-input{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%236B6A8A'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .form-section{font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:20px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--dim);}
+
+  /* ── BUTTONS ── */
+  .btn-primary{width:100%;background:#FFFFFF;color:white;border:none;border-radius:12px;padding:16px;font-size:16px;font-weight:700;cursor:pointer;transition:all .15s;margin-top:8px;}
+  .btn-primary:active{transform:scale(.98);opacity:.9;}
+  .btn-primary:disabled{background:var(--dim);color:var(--muted);cursor:not-allowed;}
+  .btn-primary.green{background:#E8E8E8;}
+  .btn-primary.red{background:#555555;}
+  .btn-secondary{width:100%;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:15px;font-weight:600;cursor:pointer;margin-top:10px;}
+
+  /* ── INFO ROWS ── */
+  .info-row{display:flex;justify-content:space-between;align-items:flex-start;padding:11px 16px;border-bottom:1px solid var(--dim);gap:12px;}
+  .info-row:last-child{border-bottom:none;}
+  .info-key{font-size:13px;color:var(--muted);flex-shrink:0;}
+  .info-val{font-size:13px;font-weight:600;text-align:right;word-break:break-all;}
+
+  /* ── TABS ── */
+  .tab-bar{display:flex;background:var(--surface);border-radius:10px;padding:3px;margin-bottom:16px;}
+  .tab{flex:1;padding:9px 6px;border:none;border-radius:8px;background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;text-align:center;}
+  .tab.active{background:var(--card);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.4);}
+
+  /* ── LEDGER ── */
+  .ledger-row{padding:12px 16px;border-bottom:1px solid var(--dim);display:flex;align-items:center;gap:10px;}
+  .ledger-row:last-child{border-bottom:none;}
+  .ledger-main{flex:1;min-width:0;}
+  .ledger-title{font-size:13px;font-weight:600;}
+  .ledger-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+  .ledger-amt{font-size:15px;font-weight:700;flex-shrink:0;}
+  .del-btn{background:transparent;border:none;color:var(--red);font-size:16px;padding:4px 8px;cursor:pointer;opacity:.6;}
+  .del-btn:active{opacity:1;}
+
+  /* ── SUMMARY ROW ── */
+  .summary-row{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--surface);border-radius:10px;margin-top:12px;}
+  .summary-label{font-size:13px;color:var(--muted);}
+  .summary-val{font-size:18px;font-weight:800;}
+
+  /* ── SHEET ── */
+  .sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:500;display:flex;align-items:flex-end;animation:overlayIn .25s ease;}
+  @keyframes overlayIn{from{opacity:0;}to{opacity:1;}}
+  .sheet{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 0 calc(var(--safe-bottom) + 16px);animation:sheetUp .3s cubic-bezier(.16,1,.3,1);}
+  @keyframes sheetUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  .sheet-handle{width:36px;height:4px;background:var(--dim);border-radius:2px;margin:12px auto 0;}
+  .sheet-header{padding:16px 20px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1;}
+  .sheet-title{font-size:17px;font-weight:800;}
+  .sheet-close{background:var(--dim);border:none;color:var(--muted);font-size:14px;border-radius:50%;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .sheet-body{padding:18px 20px 0;}
+
+  /* ── TOAST ── */
+  .toast{position:fixed;bottom:calc(var(--safe-bottom) + 76px);left:16px;right:16px;background:#1E1E1E;border:1px solid var(--green);color:var(--green);padding:13px 18px;border-radius:12px;font-size:14px;font-weight:600;z-index:9999;text-align:center;animation:toastPop .3s cubic-bezier(.16,1,.3,1);box-shadow:0 8px 32px rgba(0,0,0,.5);}
+  .toast.error{background:#1E1E1E;border-color:var(--red);color:var(--red);}
+  @keyframes toastPop{from{opacity:0;transform:translateY(12px) scale(.95);}to{opacity:1;transform:translateY(0) scale(1);}}
+
+  /* ── EMPTY ── */
+  .empty-state{text-align:center;padding:48px 24px;color:var(--muted);}
+  .empty-icon{font-size:48px;margin-bottom:14px;}
+  .empty-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px;}
+  .empty-sub{font-size:13px;line-height:1.6;}
+
+  /* ── PROFILE BANNER ── */
+  .profile-banner{background:linear-gradient(135deg,#FFFFFF18,#BBBBBB18);border:1px solid var(--orange)44;border-radius:14px;padding:16px 18px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;}
+  .pb-name{font-size:16px;font-weight:800;}
+  .pb-email{font-size:12px;color:var(--muted);margin-top:2px;}
+  .pb-signout{background:transparent;border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;}
+
+  /* ── PHOTO UPLOAD ── */
+  .photo-upload-zone{border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative;overflow:hidden;}
+  .photo-upload-zone:hover,.photo-upload-zone.drag-over{border-color:var(--orange);background:#FFFFFF08;}
+  .photo-upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .photo-upload-icon{font-size:32px;margin-bottom:8px;}
+  .photo-upload-label{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;}
+  .photo-upload-sub{font-size:11px;color:var(--muted);}
+  .photo-preview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;}
+  .photo-preview-item{position:relative;aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:var(--surface);}
+  .photo-preview-item img{width:100%;height:100%;object-fit:cover;}
+  .photo-preview-item .photo-del{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);border:none;color:white;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+  .photo-preview-item .photo-uploading{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;font-size:10px;color:white;font-weight:700;}
+  .car-photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+  .car-photo-item{aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:var(--surface);cursor:pointer;position:relative;}
+  .car-photo-item img{width:100%;height:100%;object-fit:cover;transition:transform .2s;}
+  .car-photo-item:active img{transform:scale(.97);}
+  .car-photo-del{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.75);border:none;color:white;border-radius:50%;width:24px;height:24px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  /* Lightbox */
+  #photo-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:2000;display:none;align-items:center;justify-content:center;flex-direction:column;}
+  #photo-lightbox.open{display:flex;}
+  #photo-lightbox img{max-width:95vw;max-height:80vh;object-fit:contain;border-radius:8px;}
+  #photo-lightbox-close{position:absolute;top:calc(var(--safe-top) + 16px);right:20px;background:transparent;border:none;color:white;font-size:28px;cursor:pointer;z-index:1;}
+  #photo-lightbox-caption{color:rgba(255,255,255,.6);font-size:12px;margin-top:12px;}
+
+  /* ── TRACKING ── */
+  #tracking-map{width:100%;height:320px;border-radius:14px;overflow:hidden;background:var(--surface);border:1px solid var(--border);margin-bottom:14px;position:relative;}
+  #tracking-map iframe{width:100%;height:100%;border:none;}
+  .tracking-map-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);}
+  .tracking-vehicle-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;}
+  .tv-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .tv-dot.online{background:#E8E8E8;box-shadow:0 0 6px var(--green);}
+  .tv-dot.offline{background:var(--muted);}
+  .tv-info{flex:1;min-width:0;}
+  .tv-name{font-size:14px;font-weight:700;}
+  .tv-location{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .tv-meta{font-size:11px;color:var(--dim);margin-top:2px;}
+  .tv-right{text-align:right;flex-shrink:0;}
+  .tv-speed{font-size:14px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums;}
+  .tv-time{font-size:10px;color:var(--muted);margin-top:2px;}
+  .bouncie-auth-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:center;margin-bottom:14px;}
+  .tracking-refresh-btn{background:#FFFFFF22;border:1px solid var(--orange)55;color:var(--orange);padding:8px 18px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;}
+  .tracking-refresh-btn:active{transform:scale(.97);}
+
+  /* ── B&W DESIGN SYSTEM ── */
+  .topbar-logo{display:flex;align-items:center;}
+  #topbar{background:rgba(8,8,8,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid #2C2C2C;}
+  #bottom-nav{background:rgba(8,8,8,0.97);}
+  .nav-icon{display:flex;align-items:center;justify-content:center;width:22px;height:22px;}
+  .nav-tab{opacity:.55;transition:opacity .15s;}
+  .nav-tab.active{opacity:1;}
+  .nav-tab.active .nav-icon svg{stroke-width:2;}
+  /* Cards — subtle gradient border */
+  .card{background:linear-gradient(160deg,#1E1E1E,#141414);border:1px solid #2C2C2C;border-radius:14px;}
+  .card:hover{border-color:#444444;}
+  /* KPI cards */
+  .kpi{background:linear-gradient(160deg,#1E1E1E,#141414);border:1px solid #2C2C2C;}
+  /* Buttons */
+  .btn-primary{background:#FFFFFF;color:#080808;font-weight:700;letter-spacing:0.3px;}
+  .btn-primary:hover{background:#E8E8E8;}
+  .btn-primary.green{background:#E8E8E8;color:#080808;}
+  .btn-primary.red{background:#555555;color:#F2F2F2;}
+  .btn-secondary{border:1px solid #2C2C2C;color:#7A7A7A;}
+  .btn-secondary:hover{border-color:#555555;color:#F2F2F2;}
+  /* Form inputs */
+  .form-input{background:#111111 !important;border:1px solid #2C2C2C !important;color:#F2F2F2 !important;}
+  .form-input:focus{border-color:#FFFFFF !important;box-shadow:0 0 0 2px rgba(255,255,255,.08) !important;}
+  /* Profile banner */
+  .profile-banner{background:linear-gradient(135deg,#1E1E1E,#111111);border:1px solid #2C2C2C;}
+  .pb-signout{border:1px solid #2C2C2C;color:#7A7A7A;display:flex;align-items:center;gap:5px;}
+  /* Auth card */
+  .auth-card{background:linear-gradient(160deg,#1E1E1E,#111111);border:1px solid #2C2C2C;-webkit-text-fill-color:var(--text);}
+  .auth-error{background:#1A1A1A;border:1px solid #555555;color:#AAAAAA;}
+  /* Loading spinner */
+  .loading-spinner{border-color:#2C2C2C;border-top-color:#FFFFFF;}
+  /* Tracking cards */
+  .tracking-vehicle-card{background:linear-gradient(160deg,#1E1E1E,#141414);border:1px solid #2C2C2C;}
+  .bouncie-auth-card{background:linear-gradient(160deg,#1E1E1E,#111111);border:1px solid #2C2C2C;}
+  /* Sheet */
+  .sheet{background:#111111;}
+  .sheet-header{background:#111111;border-bottom:1px solid #2C2C2C;}
+  /* Alert cards */
+  .alert-card{background:#181818;}
+  /* List rows */
+  .list-row:active{background:#1E1E1E !important;}
+  /* Topbar back button */
+  .topbar-back{color:#F2F2F2;font-weight:400;font-size:14px;}
+  /* Tab bar */
+  .tab-bar{background:#111111;}
+  .tab.active{background:#1E1E1E;color:#F2F2F2;}
+  .tab{color:#555555;}
+  /* Summary row */
+  .summary-row{background:#1A1A1A;}
+  /* Section title */
+  .section-title{color:#555555;letter-spacing:3px;}
+  /* KPI value refinement */
+  .kpi-value{letter-spacing:-1px;}
+  .kpi-label{color:#555555;letter-spacing:2px;}
+  /* Pill refinements */
+  .pill-rented{background:#1E1E1E;border:1px solid #E8E8E8;color:#E8E8E8;}
+  .pill-available{background:#1E1E1E;border:1px solid #CCCCCC;color:#CCCCCC;}
+  .pill-maintenance{background:#1E1E1E;border:1px solid #888888;color:#888888;}
+  .pill-inactive{background:#111111;border:1px solid #444444;color:#444444;}
+  /* Action buttons */
+  .action-btn{background:#1A1A1A;border:1px solid #2C2C2C;color:#AAAAAA;}
+  .action-btn.green{background:rgba(232,232,232,.06);border-color:rgba(232,232,232,.25);color:#E8E8E8;}
+  .action-btn.gold{background:rgba(187,187,187,.06);border-color:rgba(187,187,187,.25);color:#BBBBBB;}
+  .action-btn.orange{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.3);color:#FFFFFF;}
+  .action-btn.red{background:rgba(170,170,170,.06);border-color:rgba(170,170,170,.2);color:#888888;}
+  /* Role badges */
+  .role-owner{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);color:#FFFFFF;}
+  .role-manager{background:rgba(204,204,204,.1);border:1px solid rgba(204,204,204,.3);color:#CCCCCC;}
+  .role-viewer{background:rgba(153,153,153,.1);border:1px solid rgba(153,153,153,.3);color:#999999;}
+  /* Photo zone */
+  .photo-upload-zone{border:1.5px dashed #333333;background:#111111;}
+  .photo-upload-zone:hover{border-color:#888888;background:#181818;}
+  /* Tracking */
+  .tracking-refresh-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#FFFFFF;}
+  /* Report tabs */
+  .section-title{color:#555555;}
+  /* Ledger rows */
+  .del-btn{color:#555555;}
+  .del-btn:active{color:#AAAAAA;}
+  /* Chevron */
+  .chevron{color:#333333;}
+  /* Scrollbar */
+  ::-webkit-scrollbar-thumb{background:#2C2C2C;}
+
+
+  /* ── RENTER PORTAL — always dark ── */
+  /* Force dark mode on renter portal regardless of theme toggle */
+  #renter-portal {
+    --bg:#080808;--surface:#111111;--card:#181818;--border:#2C2C2C;
+    --text:#F2F2F2;--muted:#7A7A7A;--dim:#333333;
+    --accent:#FFFFFF;--accent2:#CCCCCC;
+    background:#080808;
+  }
+  body.light-mode #renter-portal {
+    --bg:#080808;--surface:#111111;--card:#181818;--border:#2C2C2C;
+    --text:#F2F2F2;--muted:#7A7A7A;--dim:#333333;
+    --accent:#FFFFFF;--accent2:#CCCCCC;
+    background:#080808;
+  }
+  body.light-mode #rp-topbar { background:#111111 !important; border-bottom:1px solid #2C2C2C !important; }
+  body.light-mode #rp-nav { background:rgba(8,8,8,.98) !important; border-top:1px solid #2C2C2C !important; }
+  body.light-mode #rp-scroll { background:#080808; }
+  body.light-mode .rp-content { background:#080808; }
+  body.light-mode #lang-fab-btn { background:#111111 !important; border-color:#2C2C2C !important; color:#F2F2F2 !important; }
+  body.light-mode #lang-fab-menu { background:#111111 !important; border-color:#2C2C2C !important; }
+  body.light-mode .lang-option { color:#F2F2F2 !important; border-bottom-color:#2C2C2C !important; }
+  body.light-mode #signature-screen { background:#080808 !important; }
+  /* ── RENTER PORTAL ── */
+  #renter-portal{position:fixed;inset:0;background:var(--bg);z-index:900;display:none;flex-direction:column;overflow:hidden;}
+  #renter-portal.active{display:flex;}
+  #rp-topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:calc(var(--safe-top) + 14px) 20px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+  #rp-logo{font-size:16px;font-weight:900;color:var(--text);letter-spacing:1px;}
+  #rp-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .rp-content{padding:20px 18px calc(var(--safe-bottom) + 32px);}
+  /* Portal nav */
+  #rp-nav{position:fixed;bottom:0;left:0;right:0;background:rgba(8,8,8,.98);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);padding-bottom:var(--safe-bottom);display:flex;z-index:910;}
+  body.light-mode #rp-nav{background:rgba(245,245,245,.98);}
+  .rp-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 4px;background:transparent;border:none;color:var(--muted);font-size:9px;font-weight:500;gap:3px;cursor:pointer;opacity:.55;transition:opacity .15s;}
+  .rp-tab.active{color:var(--accent);opacity:1;}
+  /* Portal PIN screen */
+  .rp-pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);background:transparent;transition:background .15s;}
+  .rp-pin-dot.filled{background:var(--accent);border-color:var(--accent);}
+  .rp-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:280px;margin:0 auto;}
+  .rp-key{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;font-size:22px;font-weight:600;color:var(--text);cursor:pointer;text-align:center;transition:all .1s;}
+  .rp-key:active{transform:scale(.94);background:var(--surface);}
+  /* Status badge */
+  .rp-status{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
+  .rp-status.active{background:#1E1E1E;border:1px solid var(--accent);color:var(--accent);}
+  .rp-status.overdue{background:#1E1E1E;border:1px solid var(--warn);color:var(--warn);}
+  /* Payment timeline */
+  .rp-week{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;}
+  .rp-week-num{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;}
+  .rp-week-num.paid{background:var(--accent);color:var(--bg);}
+  .rp-week-num.due{background:var(--surface);border:2px solid var(--accent);color:var(--accent);}
+  .rp-week-num.upcoming{background:var(--surface);border:2px solid var(--border);color:var(--muted);}
+  .rp-week-num.overdue{background:var(--warn);color:var(--bg);}
+  /* Upload zone */
+  .rp-upload{border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;position:relative;overflow:hidden;transition:border-color .2s;}
+  .rp-upload:hover{border-color:var(--accent);}
+  .rp-upload input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .rp-doc-preview{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;margin-top:10px;}
+
+
+  /* ── STRIPE PAYMENT ── */
+  .stripe-btn{width:100%;background:var(--accent);color:var(--bg);border:none;border-radius:12px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s;}
+  .stripe-btn:active{opacity:.85;}
+  .stripe-btn:disabled{opacity:.5;cursor:not-allowed;}
+  .stripe-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:14px;text-align:center;}
+  .paid-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:14px;text-align:center;}
+
+
+
+  /* ── DIGITAL CONTRACT & SIGNATURE ── */
+  #signature-screen{position:fixed;inset:0;background:var(--bg);z-index:800;display:none;flex-direction:column;overflow:hidden;}
+  #signature-screen.active{display:flex;}
+  .sig-topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:calc(var(--safe-top) + 14px) 20px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+  .sig-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 18px;}
+  .sig-footer{background:var(--surface);border-top:1px solid var(--border);padding:16px 18px calc(var(--safe-bottom) + 16px);flex-shrink:0;}
+  .sig-canvas-wrap{background:var(--card);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;position:relative;margin-top:12px;}
+  #sig-canvas{display:block;width:100%;touch-action:none;cursor:crosshair;}
+  .sig-clear{position:absolute;top:8px;right:8px;background:var(--surface);border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;}
+  .contract-clause{font-size:12px;color:var(--muted);padding:8px 0;border-bottom:1px solid var(--dim);line-height:1.6;}
+  .contract-clause:last-child{border-bottom:none;}
+  .signed-badge{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;color:var(--muted);}
+
+
+  /* ── LANGUAGE PICKER ── */
+  #lang-fab { position:fixed; bottom:calc(var(--safe-bottom,0px) + 80px); right:16px; z-index:960; }
+  #lang-fab-btn { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:8px 14px; font-size:12px; font-weight:700; color:var(--text); cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 4px 12px rgba(0,0,0,.4); }
+  #lang-fab-menu { position:absolute; bottom:44px; right:0; background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; display:none; box-shadow:0 8px 24px rgba(0,0,0,.5); min-width:140px; }
+  #lang-fab-menu.open { display:block; }
+  .lang-option { display:block; width:100%; background:transparent; border:none; padding:12px 16px; font-size:14px; font-weight:600; color:var(--text); cursor:pointer; text-align:left; border-bottom:1px solid var(--dim); }
+  .lang-option:last-child { border-bottom:none; }
+  .lang-option.active { color:var(--accent); background:var(--card); }
+  .lang-option:active { background:var(--card); }
+
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="loading-logo" style="color:var(--text);display:flex;justify-content:center;"><svg width="140" height="56" viewBox="0 0 280 112" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+  <style>.ls{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}.wl{font-family:-apple-system,BlinkMacSystemFont,Helvetica Neue,sans-serif;font-weight:800;font-size:16px;dominant-baseline:central;text-anchor:middle;fill:currentColor;}</style>
+  <path class="ls" d="M52 62 L56 62 L64 50 L74 43 L108 40 L132 36 L158 35 L174 37 L186 43 L194 51 L196 62 L178 62"/>
+  <path class="ls" d="M52 62 L48 62 L44 58 L43 54 L45 49 L50 46 L56 45 L64 50"/>
+  <path class="ls" d="M196 58 L199 53 L200 49 L197 44 L192 42 L186 43"/>
+  <path class="ls" d="M82 40 L88 26 L100 22 L152 21 L166 24 L175 31 L180 40"/>
+  <path class="ls" d="M89 27 L97 24 L112 22 L124 23 L125 40 L88 40 Z"/>
+  <path class="ls" d="M128 23 L152 22 L164 24 L172 29 L177 38 L128 38 Z"/>
+  <line class="ls" x1="126" y1="23" x2="126" y2="62" stroke-width="1" stroke-dasharray="2,3"/>
+  <circle class="ls" cx="72" cy="62" r="18"/>
+  <circle class="ls" cx="72" cy="62" r="11" stroke-width="1" stroke-dasharray="1.5,2.5"/>
+  <text class="wl" x="65" y="63">G</text>
+  <text class="wl" x="79" y="63">O</text>
+  <circle class="ls" cx="178" cy="62" r="18"/>
+  <circle class="ls" cx="178" cy="62" r="11" stroke-width="1" stroke-dasharray="1.5,2.5"/>
+  <text class="wl" x="171" y="63">G</text>
+  <text class="wl" x="185" y="63">O</text>
+  <line x1="38" y1="80" x2="218" y2="80" stroke="currentColor" stroke-width="0.5" stroke-opacity="0.25"/>
+  <text style="font-family:-apple-system,BlinkMacSystemFont,Helvetica Neue,sans-serif;font-weight:800;font-size:12px;letter-spacing:5px;fill:currentColor;dominant-baseline:auto;" x="94" y="98">GOGO</text>
+  <text style="font-family:-apple-system,BlinkMacSystemFont,Helvetica Neue,sans-serif;font-weight:300;font-size:7px;letter-spacing:3.5px;fill:currentColor;opacity:.55;dominant-baseline:auto;" x="77" y="110">FLEET MANAGER</text>
+</svg></div>
+  <div class="loading-spinner"></div>
+</div>
+
+<div id="renter-portal">
+  <div id="rp-topbar">
+    <div id="rp-logo" style="color:var(--text);display:flex;align-items:center;"><svg width="80" height="32" viewBox="0 0 280 112" xmlns="http://www.w3.org/2000/svg"><style>.ls{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}.wl{font-family:-apple-system,sans-serif;font-weight:800;font-size:16px;dominant-baseline:central;text-anchor:middle;fill:currentColor;}</style><path class="ls" d="M52 62 L56 62 L64 50 L74 43 L108 40 L132 36 L158 35 L174 37 L186 43 L194 51 L196 62 L178 62"/><path class="ls" d="M52 62 L48 62 L44 58 L43 54 L45 49 L50 46 L56 45 L64 50"/><path class="ls" d="M196 58 L199 53 L200 49 L197 44 L192 42 L186 43"/><path class="ls" d="M82 40 L88 26 L100 22 L152 21 L166 24 L175 31 L180 40"/><path class="ls" d="M89 27 L97 24 L112 22 L124 23 L125 40 L88 40 Z"/><path class="ls" d="M128 23 L152 22 L164 24 L172 29 L177 38 L128 38 Z"/><circle class="ls" cx="72" cy="62" r="18"/><text class="wl" x="65" y="63">G</text><text class="wl" x="79" y="63">O</text><circle class="ls" cx="178" cy="62" r="18"/><text class="wl" x="171" y="63">G</text><text class="wl" x="185" y="63">O</text></svg></div>
+    <button id="theme-toggle-btn" onclick="toggleTheme()" style="background:transparent;border:none;cursor:pointer;color:var(--text);padding:4px;display:flex;align-items:center;"></button>
+  <div id="rp-topbar-right" style="font-size:12px;color:var(--muted);font-weight:600;"></div>
+  </div>
+  <div id="rp-scroll">
+    <div id="rp-main" class="rp-content"></div>
+  </div>
+  <nav id="rp-nav" style="display:none;">
+    <button class="rp-tab active" data-rptab="home" onclick="rpNavigate('home')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </button>
+    <button class="rp-tab" data-rptab="payments" onclick="rpNavigate('payments')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span>Payments</span>
+    </button>
+    <button class="rp-tab" data-rptab="contract" onclick="rpNavigate('contract')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>Contract</span>
+    </button>
+    <button class="rp-tab" data-rptab="docs" onclick="rpNavigate('docs')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <span>Documents</span>
+    </button>
+  </nav>
+</div>
+
+<div id="toast-container"></div>
+<div id="lang-fab">
+  <div id="lang-fab-menu">
+    <button class="lang-option" onclick="setLang('en');closeLangMenu()">🇺🇸 English</button>
+    <button class="lang-option" onclick="setLang('es');closeLangMenu()">🇲🇽 Español</button>
+    <button class="lang-option" onclick="setLang('vi');closeLangMenu()">🇻🇳 Tiếng Việt</button>
+  </div>
+  <button id="lang-fab-btn" onclick="toggleLangMenu()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    <span id="lang-fab-label">Language</span>
+  </button>
+</div>
+
+<script>
+/* ══ GOGO FLEET — RENTER PORTAL ══ */
+const SB_URL = 'https://pbglpxipzidwhaxganzx.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBiZ2xweGlwemlkd2hheGdhbnp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMDU4NTEsImV4cCI6MjA4OTU4MTg1MX0.kMncp_z2-lzotOho-Yw-8uQI5hkya2SY96ahADQW2Jk';
+const FUNCTIONS_URL = 'https://pbglpxipzidwhaxganzx.supabase.co/functions/v1';
+
+let rpState = { renter:null, car:null, payments:[], pin:'', phone:'', tab:'home', authed:false };
+let currentTheme = localStorage.getItem('gogofleet-theme') || 'dark';
+let portalLang = localStorage.getItem('gogo-lang') || 'en';
+
+function initTheme() {
+  if (currentTheme === 'light') document.body.classList.add('light-mode');
+  else document.body.classList.remove('light-mode');
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = currentTheme === 'light' ? '#F0F0F0' : '#080808';
+}
+
+const $ = n => '$' + Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+const daysLeft = d => Math.ceil((new Date(d) - new Date()) / 86400000);
+const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function L(en, es, vi) {
+  if (portalLang === 'es') return es;
+  if (portalLang === 'vi') return vi;
+  return en;
+}
+function setLang(lang) {
+  portalLang = lang;
+  localStorage.setItem('gogo-lang', lang);
+  updateLangFab();
+  if (rpState.authed) {
+    // Full re-render — updates nav labels, topbar, and page content
+    rpShowDashboard();
+  } else {
+    renderRPLogin();
+  }
+}
+function langBar() {
+  return '<div class="lang-bar">'
+    + '<button class="lang-btn '+(portalLang==="en"?"active":"")+'" onclick="setLang(\'en\')">🇺🇸 English</button>'
+    + '<button class="lang-btn '+(portalLang==="es"?"active":"")+'" onclick="setLang(\'es\')">🇲🇽 Español</button>'
+    + '<button class="lang-btn '+(portalLang==="vi"?"active":"")+'" onclick="setLang(\'vi\')">🇻🇳 Tiếng Việt</button>'
+    + '</div>';
+}
+
+let toastTimer;
+function showToast(msg, type) {
+  clearTimeout(toastTimer);
+  document.getElementById('toast-container').innerHTML = '<div class="toast'+(type==='error'?' error':'')+'">'+(msg||'')+'</div>';
+  toastTimer = setTimeout(() => { document.getElementById('toast-container').innerHTML = ''; }, 3200);
+}
+
+function rpNavigate(tab) {
+  rpState.tab = tab;
+  document.querySelectorAll('.rp-tab').forEach(t => t.classList.toggle('active', t.dataset.rptab === tab));
+  renderRPPage();
+}
+
+function renderRPPage() {
+  if (rpState.tab === 'home') renderRPHome();
+  else if (rpState.tab === 'payments') renderRPPayments();
+  else if (rpState.tab === 'contract') renderRPContract();
+  else if (rpState.tab === 'docs') renderRPDocs();
+}
+
+function renderRPLogin() {
+  document.getElementById('rp-nav').style.display = 'none';
+  document.getElementById('rp-topbar-right').textContent = '';
+  const el = document.getElementById('rp-main');
+  el.innerHTML = `
+    <div style="text-align:center;padding:24px 0 20px;">
+      <div style="font-size:13px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Renter Login</div>
+      <div style="font-size:14px;color:var(--muted);line-height:1.6;">Enter your phone number to access your rental account</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Phone Number</label>
+      <input class="form-input" id="rp-phone" type="tel" inputmode="tel" placeholder="713-555-0000" style="font-size:18px;text-align:center;letter-spacing:2px;">
+    </div>
+    <button class="btn-primary" onclick="rpSubmitPhone()" style="margin-top:8px;">Continue</button>
+    <div style="text-align:center;margin-top:20px;font-size:12px;color:var(--muted);">
+      Are you a fleet owner? <button onclick="window.location.href='https://gogofleet.app'" style="background:transparent;border:none;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;">Owner Login →</button>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:16px;text-align:center;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">${L('Looking for a car to rent?','¿Buscas un auto para rentar?','Đang tìm xe để thuê?')}</div>
+      <a href="https://gogofleet.app/cars" style="display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:var(--bg);padding:9px 18px;border-radius:20px;font-size:13px;font-weight:700;text-decoration:none;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/><path d="M10 17h4"/><path d="M4 9h16"/></svg>
+        ${L('Browse Available Cars →','Ver Autos Disponibles →','Xem Xe Có Sẵn →')}
+      </a>
+    </div>
+    <div style="text-align:center;margin-top:14px;display:flex;justify-content:center;gap:16px;">
+      <a href="https://gogofleet.app/privacy" target="_blank" style="font-size:11px;color:var(--muted);text-decoration:none;">Privacy Policy</a>
+      <a href="https://gogofleet.app/terms" target="_blank" style="font-size:11px;color:var(--muted);text-decoration:none;">Terms &amp; Conditions</a>
+    </div>`;
+}
+
+async function rpSubmitPhone() {
+  const phone = document.getElementById('rp-phone')?.value?.trim().replace(/\D/g,'');
+  if (phone.length < 10) { showToast('Enter a valid phone number', 'error'); return; }
+  rpState.phone = phone;
+
+  // Look up renter by phone across all active renters
+  // Use anon key — renter data needs to be accessible without auth
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/renters?phone=like.*${phone.slice(-10)}*&active=eq.true&order=created_at.desc&limit=1`, {
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/json' }
+    });
+    const rows = await r.json();
+    if (!rows.length) {
+      showToast('No active rental found for that number', 'error');
+      return;
+    }
+    rpState.renter = rows[0];
+    renderRPPinEntry(false);
+  } catch(e) {
+    showToast('Could not look up account. Try again.', 'error');
+  }
+}
+
+function renderRPPinEntry(wrongPin = false) {
+  rpState.pin = '';
+  const el = document.getElementById('rp-main');
+  el.innerHTML = `
+    <div style="text-align:center;padding:28px 0 20px;">
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px;">Welcome, ${esc(rpState.renter?.name?.split(' ')[0] || 'Renter')}</div>
+      <div style="font-size:13px;color:var(--muted);">Enter your 4-digit PIN</div>
+      ${wrongPin ? '<div style="font-size:12px;color:var(--warn);margin-top:8px;">Incorrect PIN — try again</div>' : ''}
+    </div>
+    <div style="display:flex;justify-content:center;gap:14px;margin:20px 0 32px;">
+      <div class="rp-pin-dot" id="dot-0"></div>
+      <div class="rp-pin-dot" id="dot-1"></div>
+      <div class="rp-pin-dot" id="dot-2"></div>
+      <div class="rp-pin-dot" id="dot-3"></div>
+    </div>
+    <div class="rp-keypad">
+      ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k => `
+        <button class="rp-key" onclick="rpKeyPress('${k}')" ${k===''?'style="visibility:hidden"':''}>
+          ${k}
+        </button>`).join('')}
+    </div>
+    <button onclick="renderRPLogin()" style="display:block;margin:24px auto 0;background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;">← Back</button>`;
+}
+
+function rpKeyPress(key) {
+  if (key === '⌫') {
+    rpState.pin = rpState.pin.slice(0, -1);
+  } else if (key !== '' && rpState.pin.length < 4) {
+    rpState.pin += String(key);
+  }
+  // Update dots
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('dot-' + i);
+    if (dot) dot.classList.toggle('filled', i < rpState.pin.length);
+  }
+  if (rpState.pin.length === 4) {
+    setTimeout(rpVerifyPin, 150);
+  }
+}
+
+async function rpVerifyPin() {
+  const renter = rpState.renter;
+  const expectedPin = renter.pin || rpState.phone.replace(/\D/g,'').slice(-4);
+  if (rpState.pin === expectedPin) {
+    rpState.authed = true;
+    await rpLoadData();
+    // Check if contract needs to be signed first
+    await showContractIfNeeded();
+  } else {
+    renderRPPinEntry(true);
+  }
+}
+
+async function rpLoadData() {
+  try {
+    const [carRes, payRes] = await Promise.all([
+      fetch(`${SB_URL}/rest/v1/cars?id=eq.${rpState.renter.car_id}`, {
+        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/json' }
+      }),
+      fetch(`${SB_URL}/rest/v1/payments?car_id=eq.${rpState.renter.car_id}&order=date.asc`, {
+        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/json' }
+      })
+    ]);
+    const cars = await carRes.json();
+    const pays = await payRes.json();
+    rpState.car = cars[0] || null;
+    rpState.payments = pays || [];
+  } catch(e) { console.error('Portal data load:', e); }
+}
+
+function rpShowDashboard() {
+  document.getElementById('rp-nav').style.display = 'flex';
+  const firstName = rpState.renter?.name?.split(' ')[0] || '';
+  document.getElementById('rp-topbar-right').textContent = firstName;
+  updateLangFab();
+  rpState.tab = 'home';
+  document.querySelectorAll('.rp-tab').forEach(t => t.classList.toggle('active', t.dataset.rptab === 'home'));
+  renderRPPage();
+}
+
+function renderRPHome() {
+  const r = rpState.renter;
+  const car = rpState.car;
+  const pays = rpState.payments;
+  const el = document.getElementById('rp-main');
+
+  if (!r) { el.innerHTML = '<div class="empty-state"><div class="empty-title">No active rental found</div></div>'; return; }
+
+  const dl = daysLeft(r.contract_end);
+  const weeklyTotal = +r.weekly_rent + +r.protection_fee;
+  const totalDue = weeklyTotal * 4;
+  const totalPaid = pays.reduce((s, p) => s + +p.amount, 0);
+  const balance = Math.max(0, totalDue - totalPaid);
+  const isOverdue = dl < 0;
+  const contractStart = new Date(r.contract_start + 'T00:00:00');
+  const daysSinceStart = Math.floor((new Date() - contractStart) / 86400000);
+  const currentWeek = Math.min(4, Math.floor(daysSinceStart / 7) + 1);
+  const lastPayment = pays.slice().sort((a,b) => (b.date||'').localeCompare(a.date||''))[0];
+  const pct = Math.min(100, Math.round(totalPaid / totalDue * 100));
+
+  let stripeSection = '';
+  if (balance > 0) {
+    stripeSection = `
+      <div class="stripe-box">
+        <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Make a Payment</div>
+        <div style="font-size:28px;font-weight:900;margin-bottom:4px;font-variant-numeric:tabular-nums;">${$(weeklyTotal)}</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Week ${currentWeek} payment due</div>
+        <button id="rp-stripe-btn" class="stripe-btn" onclick="initiateStripePayment(${currentWeek}, ${weeklyTotal})">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          Pay Now with Card
+        </button>
+        <div style="font-size:11px;color:var(--muted);margin-top:10px;">Secured by Stripe &middot; Visa, Mastercard, Amex accepted</div>
+      </div>`;
+  } else {
+    stripeSection = `
+      <div class="paid-box">
+        <div style="font-size:32px;margin-bottom:8px;">&#10003;</div>
+        <div style="font-size:14px;font-weight:700;">All paid up!</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;">No balance due</div>
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;text-align:center;">
+      <div style="margin-bottom:12px;">
+        <span class="rp-status ${isOverdue ? 'overdue' : 'active'}">${isOverdue ? 'Overdue' : 'Active Rental'}</span>
+      </div>
+      <div style="font-size:28px;font-weight:900;margin-bottom:4px;font-variant-numeric:tabular-nums;">${$(balance)}</div>
+      <div style="font-size:13px;color:var(--muted);">${balance > 0 ? 'balance due' : 'fully paid'}</div>
+    </div>
+
+    ${stripeSection}
+
+    ${car ? `<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Your Vehicle</div>
+      <div style="font-size:17px;font-weight:800;margin-bottom:4px;">${esc(car.year + ' ' + car.make + ' ' + car.model)}</div>
+      <div style="font-size:13px;color:var(--muted);">${esc(car.color)} &middot; ${esc(car.plate)}</div>
+    </div>` : ''}
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Contract Summary</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="background:var(--surface);padding:10px 12px;border-radius:8px;">
+          <div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Weekly Rent</div>
+          <div style="font-size:14px;font-weight:700;">${$(r.weekly_rent)}</div>
+        </div>
+        <div style="background:var(--surface);padding:10px 12px;border-radius:8px;">
+          <div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Protection Fee</div>
+          <div style="font-size:14px;font-weight:700;">${$(r.protection_fee)}/wk</div>
+        </div>
+        <div style="background:var(--surface);padding:10px 12px;border-radius:8px;">
+          <div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Contract Ends</div>
+          <div style="font-size:13px;font-weight:700;color:${isOverdue ? 'var(--warn)' : 'var(--text)'};">${fmtDate(r.contract_end)}</div>
+        </div>
+        <div style="background:var(--surface);padding:10px 12px;border-radius:8px;">
+          <div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Deposit Held</div>
+          <div style="font-size:14px;font-weight:700;">${$(r.deposit)}</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);">Payment Progress</div>
+        <div style="font-size:12px;color:var(--muted);">${$(totalPaid)} of ${$(totalDue)}</div>
+      </div>
+      <div style="height:8px;background:var(--dim);border-radius:4px;overflow:hidden;margin-bottom:8px;">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--muted));border-radius:4px;"></div>
+      </div>
+      <div style="font-size:11px;color:var(--dim);">${pct}% complete &middot; ${pays.length} of 4 weeks paid</div>
+    </div>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Need Help?</div>
+      <a href="tel:+1" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);background:var(--surface);padding:12px;border-radius:10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6.06 6.06l1.41-1.41a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        <div>
+          <div style="font-size:13px;font-weight:600;">Call Fleet Manager</div>
+          <div style="font-size:11px;color:var(--muted);">For emergencies or questions</div>
+        </div>
+      </a>
+    </div>
+
+    ${dl !== null && dl <= 7 ? `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;text-align:center;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">${isOverdue ? L('Contract expired — need a new car?','¿Contrato vencido — necesitas otro auto?','Hợp đồng hết hạn — cần xe mới?') : L('Contract ending soon — looking for another car?','¿Contrato por vencer — buscas otro auto?','Hợp đồng sắp hết — cần xe mới?')}</div>
+      <a href="https://gogofleet.app/cars" style="display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:var(--bg);padding:9px 18px;border-radius:20px;font-size:13px;font-weight:700;text-decoration:none;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/><path d="M10 17h4"/><path d="M4 9h16"/></svg>
+        ${L('Browse Available Cars →','Ver Autos Disponibles →','Xem Xe Có Sẵn →')}
+      </a>
+    </div>` : ''}
+    <button onclick="rpSignOut()" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--muted);padding:14px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;">${L('Sign Out','Cerrar Sesión','Đăng Xuất')}</button>`;
+}
+
+function renderRPPayments() {
+  const r = rpState.renter;
+  const pays = rpState.payments;
+  const el = document.getElementById('rp-main');
+  const weeklyTotal = +r.weekly_rent + +r.protection_fee;
+  const contractStart = new Date(r.contract_start + 'T00:00:00');
+
+  // Build 4-week schedule
+  const weeks = [1,2,3,4].map(wk => {
+    const dueDate = new Date(contractStart);
+    dueDate.setDate(dueDate.getDate() + (wk - 1) * 7);
+    const payment = pays.find(p => +p.week_num === wk);
+    const isPast = new Date() > dueDate;
+    const status = payment ? 'paid' : isPast ? 'overdue' : wk === Math.min(4, Math.floor((new Date()-contractStart)/86400000/7)+1) ? 'due' : 'upcoming';
+    return { wk, dueDate, payment, status };
+  });
+
+  const totalPaid = pays.reduce((s,p) => s + +p.amount, 0);
+  const totalDue = weeklyTotal * 4;
+
+  el.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+      <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;">Total Paid</div><div style="font-size:24px;font-weight:900;font-variant-numeric:tabular-nums;">${$(totalPaid)}</div></div>
+      <div style="text-align:right;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;">Remaining</div><div style="font-size:24px;font-weight:900;font-variant-numeric:tabular-nums;">${$(Math.max(0,totalDue-totalPaid))}</div></div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Weekly Schedule</div>
+
+    ${weeks.map(({wk, dueDate, payment, status}) => `
+      <div class="rp-week">
+        <div class="rp-week-num ${status}">${wk}</div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:700;">Week ${wk} — ${$(weeklyTotal)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">
+            Due ${fmtDate(dueDate.toISOString().slice(0,10))}
+            ${payment ? ' · Paid ' + fmtDate(payment.date) + ' via ' + esc(payment.method) : ''}
+          </div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:${status==='paid'?'var(--pos)':status==='overdue'?'var(--warn)':status==='due'?'var(--accent)':'var(--muted)'}">
+          ${status==='paid'?'✓ Paid':status==='overdue'?'Overdue':status==='due'?'Due Now':'Upcoming'}
+        </div>
+      </div>`).join('')}
+
+    <div style="margin-top:16px;">
+      <div class="stripe-box" style="margin-bottom:10px;">
+        <button onclick="initiateStripePayment(${currentWeek}, ${weeklyTotal})"
+          class="stripe-btn" style="margin-bottom:10px;">
+          Pay Week ${currentWeek} &mdash; ${$(weeklyTotal)} with Card
+        </button>
+        <div style="font-size:11px;color:var(--muted);">Secured by Stripe</div>
+      </div>
+      <div style="background:var(--surface);border-radius:10px;padding:12px;font-size:12px;color:var(--muted);line-height:1.7;text-align:center;">
+        Or pay via <strong style="color:var(--text);">Zelle &middot; Cash App &middot; Venmo &middot; Cash</strong><br>
+        Contact your fleet manager to record cash payments
+      </div>
+    </div>`;
+}
+
+function renderRPContract() {
+  const r = rpState.renter;
+  const car = rpState.car;
+  const el = document.getElementById('rp-main');
+
+  const terms = [
+    ['Renter', r.name],
+    ['Phone', r.phone],
+    ['Email', r.email || '—'],
+    ["Driver's License", r.license],
+    ['Platform', r.platform],
+    ['Vehicle', car ? car.year+' '+car.make+' '+car.model : '—'],
+    ['Plate', car ? car.plate : '—'],
+    ['Contract Start', fmtDate(r.contract_start)],
+    ['Contract End', fmtDate(r.contract_end)],
+    ['Weekly Rent', $(r.weekly_rent)],
+    ['Protection Fee', $(r.protection_fee)+'/wk'],
+    ['Weekly Total', $(+r.weekly_rent + +r.protection_fee)],
+    ['Security Deposit', $(r.deposit)],
+    ['Total Contract Value', $(( +r.weekly_rent + +r.protection_fee) * 4)],
+  ];
+
+  el.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px;">
+      <div style="padding:16px;border-bottom:1px solid var(--border);">
+        <div style="font-size:16px;font-weight:800;margin-bottom:2px;">Rental Agreement</div>
+        <div style="font-size:12px;color:var(--muted);">GOGO Fleet · Houston, Texas</div>
+      </div>
+      ${terms.map(([k,v]) => `
+        <div style="padding:10px 16px;border-bottom:1px solid var(--dim);display:flex;justify-content:space-between;align-items:center;gap:12px;">
+          <span style="font-size:12px;color:var(--muted);flex-shrink:0;">${k}</span>
+          <span style="font-size:13px;font-weight:600;text-align:right;">${esc(v)}</span>
+        </div>`).join('')}
+    </div>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Key Terms</div>
+      ${['Weekly payments are due every 7 days from contract start date.',
+         'A $50 late fee applies after 3 days past due date.',
+         'Security deposit is refundable upon return of vehicle in original condition.',
+         'Renter is responsible for all traffic violations and parking tickets.',
+         'Vehicle must be used for approved delivery platforms only.',
+         'Fleet manager must be notified immediately of any accident or damage.',
+         'Contract auto-expires on end date unless renewed in writing.']
+        .map(t => `<div style="font-size:12px;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--dim);line-height:1.5;">· ${t}</div>`).join('')}
+    </div>`;
+}
+
+function renderRPDocs() {
+  const r = rpState.renter;
+  const el = document.getElementById('rp-main');
+
+  el.innerHTML = `
+    <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;">Required Documents</div>
+
+    <!-- Driver License -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div>
+          <div style="font-size:14px;font-weight:700;">Driver's License</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${esc(r.license)}</div>
+        </div>
+        <div id="license-status" style="font-size:11px;color:var(--muted);">Checking…</div>
+      </div>
+      <div class="rp-upload" id="license-upload-zone">
+        <input type="file" accept="image/*" onchange="rpUploadDoc(event,'license')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+        <div style="font-size:13px;font-weight:600;margin-top:8px;">Upload License Photo</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Front and back if possible</div>
+      </div>
+      <div id="license-preview"></div>
+    </div>
+
+    <!-- Insurance Card -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div>
+          <div style="font-size:14px;font-weight:700;">Insurance Card</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">Current proof of insurance</div>
+        </div>
+        <div id="insurance-status" style="font-size:11px;color:var(--muted);">Checking…</div>
+      </div>
+      <div class="rp-upload" id="insurance-upload-zone">
+        <input type="file" accept="image/*" onchange="rpUploadDoc(event,'insurance')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+        <div style="font-size:13px;font-weight:600;margin-top:8px;">Upload Insurance Card</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">JPG or PNG, max 10MB</div>
+      </div>
+      <div id="insurance-preview"></div>
+    </div>
+
+    <div style="background:var(--surface);border-radius:10px;padding:14px;font-size:12px;color:var(--muted);line-height:1.6;text-align:center;">
+      Documents are stored securely and only visible to your fleet manager.
+    </div>`;
+
+  // Check existing docs
+  rpCheckExistingDocs();
+}
+
+async function rpCheckExistingDocs() {
+  const renterId = rpState.renter?.id;
+  if (!renterId) return;
+
+  for (const docType of ['license','insurance']) {
+    try {
+      const r = await fetch(`${SB_URL}/storage/v1/object/list/vehicle-photos`, {
+        method: 'POST',
+        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prefix: `renter-docs/${renterId}/${docType}/`, limit: 5 })
+      });
+      const files = await r.json();
+      const statusEl = document.getElementById(docType + '-status');
+      const previewEl = document.getElementById(docType + '-preview');
+      if (files && files.length) {
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--pos);">✓ Uploaded</span>';
+        if (previewEl) {
+          const url = `${SB_URL}/storage/v1/object/public/vehicle-photos/renter-docs/${renterId}/${docType}/${files[0].name}`;
+          previewEl.innerHTML = `<div class="rp-doc-preview"><img src="${url}" style="width:60px;height:40px;object-fit:cover;border-radius:6px;" onerror="this.parentElement.innerHTML='<span style=font-size:12px;color:var(--muted)>File uploaded</span>'"><div style="font-size:12px;color:var(--pos);">Document on file</div></div>`;
+        }
+      } else {
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--warn);">Not uploaded</span>';
+      }
+    } catch(e) {
+      const statusEl = document.getElementById(docType + '-status');
+      if (statusEl) statusEl.textContent = '—';
+    }
+  }
+}
+
+async function rpUploadDoc(event, docType) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { showToast('File too large (max 10MB)', 'error'); return; }
+
+  const renterId = rpState.renter?.id;
+  const ext = file.name.split('.').pop() || 'jpg';
+  const path = `renter-docs/${renterId}/${docType}/${Date.now()}.${ext}`;
+
+  const zone = document.getElementById(docType + '-upload-zone');
+  if (zone) zone.innerHTML = '<div style="padding:12px;text-align:center;font-size:13px;font-weight:600;">Uploading…</div>';
+
+  try {
+    const r = await fetch(`${SB_URL}/storage/v1/object/vehicle-photos/${path}`, {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': file.type || 'image/jpeg', 'x-upsert': 'true' },
+      body: file
+    });
+    if (!r.ok) throw new Error('Upload failed');
+    showToast(docType === 'license' ? 'License uploaded ✓' : 'Insurance card uploaded ✓');
+    renderRPDocs();
+  } catch(e) {
+    showToast('Upload failed. Try again.', 'error');
+    renderRPDocs();
+  }
+}
+
+function rpSignOut() {
+  rpState = { renter: null, car: null, payments: [], pin: '', phone: '', tab: 'home', authed: false };
+  document.getElementById('rp-nav').style.display = 'none';
+  renderRPLogin();
+}
+
+async function initiateStripePayment(weekNum, amount) {
+  const r = rpState.renter;
+  if (!r) return;
+  const btn = document.getElementById('rp-stripe-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
+  try {
+    const portalUrl = window.location.origin + '/renter';
+    const res = await fetch(FUNCTIONS_URL + '/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_KEY },
+      body: JSON.stringify({
+        renter_id: r.id,
+        car_id: r.car_id,
+        renter_name: r.name,
+        amount: amount,
+        week_num: weekNum,
+        success_url: portalUrl,
+        cancel_url: portalUrl
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    window.location.href = data.url;
+  } catch(e) {
+    showToast('Payment error: ' + e.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Pay Now'; }
+  }
+}
+
+function checkStripeReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const status = params.get('payment');
+  if (!status) return;
+  window.history.replaceState({}, '', window.location.pathname + '/renter');
+  if (status === 'success') {
+    setTimeout(async () => {
+      showToast('Payment successful! ✓');
+      if (rpState.authed && rpState.renter) {
+        await rpLoadData();
+        renderRPPage();
+      }
+    }, 600);
+  } else if (status === 'cancelled') {
+    setTimeout(() => showToast('Payment cancelled', 'error'), 600);
+  }
+}
+
+function checkRenterPortalRoute() {
+  const hash = window.location.hash;
+  const params = new URLSearchParams(window.location.search);
+  // Trigger portal if ?portal=true or #renter
+  if (hash === '#renter' || params.get('portal') === 'true') {
+    showRenterPortal();
+    return true;
+  }
+  return false;
+}
+
+function showRenterPortal() {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('renter-portal').classList.add('active');
+  initTheme();
+  rpState = { renter: null, car: null, payments: [], pin: '', phone: '', tab: 'home', authed: false };
+  checkStripeReturn();
+  renderRPLogin();
+}
+
+function hideRenterPortal() {
+  document.getElementById('renter-portal').classList.remove('active');
+  document.getElementById('rp-nav').style.display = 'none';
+}
+
+/* ═══════════════════════════════════════
+   DIGITAL CONTRACT & SIGNATURE
+═══════════════════════════════════════ */
+
+let sigCanvas = null;
+let sigCtx = null;
+let sigDrawing = false;
+let sigHasContent = false;
+let sigLastX = 0;
+let sigLastY = 0;
+
+// Check if this renter has already signed their current contract
+async function checkContractSigned(renter) {
+  try {
+    const path = `contracts/${renter.id}/signed.json`;
+    const r = await fetch(`${SB_URL}/storage/v1/object/vehicle-photos/${path}`, {
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+    });
+    if (!r.ok) return false;
+    const data = await r.json();
+    // Check it matches current contract (by contract_start date)
+    return data.contract_start === renter.contract_start;
+  } catch(e) {
+    return false;
+  }
+}
+
+async function showContractIfNeeded() {
+  const r = rpState.renter;
+  if (!r) return;
+  const signed = await checkContractSigned(r);
+  if (!signed) {
+    showContractSignature();
+  } else {
+    rpShowDashboard();
+  }
+}
+
+function showContractSignature() {
+  const screen = document.getElementById('signature-screen');
+  screen.classList.add('active');
+
+  const r = rpState.renter;
+  const car = rpState.car;
+  const weeklyTotal = +r.weekly_rent + +r.protection_fee;
+
+  const clauses = [
+    `This Rental Agreement is entered into between GOGO Fleet ("Owner") and ${r.name} ("Renter") effective ${fmtDate(r.contract_start)}.`,
+    `Renter agrees to lease the vehicle: ${car ? car.year+' '+car.make+' '+car.model+' ('+car.plate+')' : 'as assigned'} for the period ${fmtDate(r.contract_start)} through ${fmtDate(r.contract_end)}.`,
+    `Renter agrees to pay $${(+r.weekly_rent).toLocaleString()} weekly rent plus $${(+r.protection_fee).toLocaleString()} weekly protection fee, totaling $${weeklyTotal.toLocaleString()} per week, due every 7 days from contract start.`,
+    `A security deposit of $${(+r.deposit).toLocaleString()} has been collected and is refundable upon return of the vehicle in its original condition.`,
+    `A late fee of $50 applies for any payment received more than 3 days past the due date.`,
+    `Renter is solely responsible for all traffic violations, parking tickets, tolls, and fines incurred during the rental period.`,
+    `The vehicle may only be used for approved delivery platform work (DoorDash, UberEats, Instacart, Amazon Flex, GrubHub, or similar). Personal use is permitted. Unauthorized subletting is strictly prohibited.`,
+    `Renter must notify Owner immediately in the event of any accident, damage, theft, or mechanical issue. Failure to report may result in forfeiture of deposit.`,
+    `Renter shall maintain the vehicle in clean condition and return it with the same fuel level as received.`,
+    `Owner reserves the right to terminate this agreement immediately for non-payment, misuse of vehicle, or violation of any terms herein. In such cases, the deposit may be forfeited.`,
+    `This contract auto-expires on ${fmtDate(r.contract_end)} unless renewed in writing by both parties.`,
+    `By signing below, Renter confirms they have read, understood, and agree to all terms of this Rental Agreement.`,
+  ];
+
+  document.getElementById('sig-scroll-area').innerHTML = `
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Please read and sign</div>
+      <div style="font-size:13px;color:var(--muted);">Scroll down to read all terms before signing</div>
+    </div>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:800;margin-bottom:12px;">GOGO Fleet — Rental Agreement</div>
+      ${clauses.map((c,i) => `<div class="contract-clause"><strong style="color:var(--text);">${i+1}.</strong> ${esc(c)}</div>`).join('')}
+    </div>
+
+    <div style="margin-bottom:8px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px;">Your Signature</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Sign with your finger in the box below</div>
+      <div class="sig-canvas-wrap">
+        <canvas id="sig-canvas" height="160"></canvas>
+        <button class="sig-clear" onclick="clearSignature()">Clear</button>
+      </div>
+      <div style="font-size:11px;color:var(--dim);margin-top:6px;text-align:center;">
+        ${esc(r.name)} &nbsp;·&nbsp; ${fmtDate(r.contract_start)}
+      </div>
+    </div>
+
+    <div style="height:20px;"></div>`;
+
+  // Init canvas after render
+  setTimeout(initSignatureCanvas, 100);
+}
+
+function initSignatureCanvas() {
+  sigCanvas = document.getElementById('sig-canvas');
+  if (!sigCanvas) return;
+
+  // Set canvas to actual pixel size
+  const wrap = sigCanvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const w = wrap.clientWidth;
+  const h = 160;
+  sigCanvas.width = w * dpr;
+  sigCanvas.height = h * dpr;
+  sigCanvas.style.width = w + 'px';
+  sigCanvas.style.height = h + 'px';
+
+  sigCtx = sigCanvas.getContext('2d');
+  sigCtx.scale(dpr, dpr);
+  sigCtx.strokeStyle = '#F2F2F2';
+  sigCtx.lineWidth = 2.5;
+  sigCtx.lineCap = 'round';
+  sigCtx.lineJoin = 'round';
+
+  // Draw faint guideline
+  sigCtx.strokeStyle = '#333333';
+  sigCtx.lineWidth = 0.5;
+  sigCtx.beginPath();
+  sigCtx.moveTo(20, 130);
+  sigCtx.lineTo(w - 20, 130);
+  sigCtx.stroke();
+  sigCtx.strokeStyle = '#F2F2F2';
+  sigCtx.lineWidth = 2.5;
+
+  sigDrawing = false;
+  sigHasContent = false;
+
+  // Touch events
+  sigCanvas.addEventListener('touchstart', sigStart, { passive: false });
+  sigCanvas.addEventListener('touchmove', sigMove, { passive: false });
+  sigCanvas.addEventListener('touchend', sigEnd);
+  sigCanvas.addEventListener('mousedown', sigStartMouse);
+  sigCanvas.addEventListener('mousemove', sigMoveMouse);
+  sigCanvas.addEventListener('mouseup', sigEnd);
+}
+
+function getPos(e, canvas) {
+  const rect = canvas.getBoundingClientRect();
+  if (e.touches) {
+    return {
+      x: e.touches[0].clientX - rect.left,
+      y: e.touches[0].clientY - rect.top
+    };
+  }
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function sigStart(e) {
+  e.preventDefault();
+  sigDrawing = true;
+  const pos = getPos(e, sigCanvas);
+  sigLastX = pos.x;
+  sigLastY = pos.y;
+  sigCtx.beginPath();
+  sigCtx.moveTo(sigLastX, sigLastY);
+}
+
+function sigStartMouse(e) {
+  sigDrawing = true;
+  const pos = getPos(e, sigCanvas);
+  sigLastX = pos.x;
+  sigLastY = pos.y;
+  sigCtx.beginPath();
+  sigCtx.moveTo(sigLastX, sigLastY);
+}
+
+function sigMove(e) {
+  e.preventDefault();
+  if (!sigDrawing) return;
+  const pos = getPos(e, sigCanvas);
+  sigCtx.lineTo(pos.x, pos.y);
+  sigCtx.stroke();
+  sigCtx.beginPath();
+  sigCtx.moveTo(pos.x, pos.y);
+  sigLastX = pos.x;
+  sigLastY = pos.y;
+  if (!sigHasContent) {
+    sigHasContent = true;
+    updateSigButton();
+  }
+}
+
+function sigMoveMouse(e) {
+  if (!sigDrawing) return;
+  const pos = getPos(e, sigCanvas);
+  sigCtx.lineTo(pos.x, pos.y);
+  sigCtx.stroke();
+  sigCtx.beginPath();
+  sigCtx.moveTo(pos.x, pos.y);
+  if (!sigHasContent) {
+    sigHasContent = true;
+    updateSigButton();
+  }
+}
+
+function sigEnd() {
+  sigDrawing = false;
+  sigCtx.beginPath();
+}
+
+function clearSignature() {
+  if (!sigCtx || !sigCanvas) return;
+  sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+  // Redraw guideline
+  const dpr = window.devicePixelRatio || 1;
+  const w = sigCanvas.style.width ? parseInt(sigCanvas.style.width) : sigCanvas.width / dpr;
+  sigCtx.strokeStyle = '#333333';
+  sigCtx.lineWidth = 0.5;
+  sigCtx.beginPath();
+  sigCtx.moveTo(20, 130);
+  sigCtx.lineTo(w - 20, 130);
+  sigCtx.stroke();
+  sigCtx.strokeStyle = '#F2F2F2';
+  sigCtx.lineWidth = 2.5;
+  sigHasContent = false;
+  updateSigButton();
+}
+
+function updateSigButton() {
+  const btn = document.getElementById('sig-submit-btn');
+  if (btn) {
+    btn.disabled = !sigHasContent;
+    btn.style.opacity = sigHasContent ? '1' : '0.4';
+  }
+}
+
+async function submitSignature() {
+  if (!sigHasContent || !sigCanvas) return;
+  const btn = document.getElementById('sig-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  try {
+    const r = rpState.renter;
+
+    // Export signature as PNG blob
+    const sigDataUrl = sigCanvas.toDataURL('image/png');
+    const sigBlob = await (await fetch(sigDataUrl)).blob();
+
+    // Upload signature image
+    const sigPath = `contracts/${r.id}/signature_${r.contract_start}.png`;
+    await fetch(`${SB_URL}/storage/v1/object/vehicle-photos/${sigPath}`, {
+      method: 'POST',
+      headers: {
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY,
+        'Content-Type': 'image/png',
+        'x-upsert': 'true'
+      },
+      body: sigBlob
+    });
+
+    // Save signed contract metadata
+    const metaPath = `contracts/${r.id}/signed.json`;
+    const meta = {
+      renter_id: r.id,
+      renter_name: r.name,
+      car_id: r.car_id,
+      contract_start: r.contract_start,
+      contract_end: r.contract_end,
+      signed_at: new Date().toISOString(),
+      signed_by: r.name,
+      weekly_rent: r.weekly_rent,
+      protection_fee: r.protection_fee,
+      deposit: r.deposit,
+      signature_path: sigPath,
+    };
+
+    await fetch(`${SB_URL}/storage/v1/object/vehicle-photos/${metaPath}`, {
+      method: 'POST',
+      headers: {
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY,
+        'Content-Type': 'application/json',
+        'x-upsert': 'true'
+      },
+      body: JSON.stringify(meta)
+    });
+
+    // Hide signature screen and show dashboard
+    document.getElementById('signature-screen').classList.remove('active');
+    showToast('Contract signed successfully');
+    rpShowDashboard();
+
+  } catch(e) {
+    showToast('Error saving signature. Try again.', 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Sign & Accept Contract';
+      btn.style.opacity = '1';
+    }
+  }
+}
+
+
+
+window.addEventListener('load', () => {
+  initTheme();
+  checkStripeReturn();
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('renter-portal').classList.add('active');
+  renderRPLogin();
+  updateLangFab();
+});
+
+function updateLangFab() {
+  const fab = document.getElementById('lang-fab');
+  const label = document.getElementById('lang-fab-label');
+  const options = document.querySelectorAll('.lang-option');
+  const labels = { en: 'English', es: 'Español', vi: 'Tiếng Việt' };
+  if (fab) fab.style.display = 'block';
+  if (label) label.textContent = labels[portalLang] || 'Language';
+  options.forEach(function(opt) {
+    var match = opt.getAttribute('onclick');
+    var lang = match ? match.replace("setLang('","").replace("');closeLangMenu()","") : null;
+    opt.classList.toggle('active', lang === portalLang);
+  });
+}
+
+function toggleLangMenu() {
+  var menu = document.getElementById('lang-fab-menu');
+  if (menu) menu.classList.toggle('open');
+}
+
+function closeLangMenu() {
+  var menu = document.getElementById('lang-fab-menu');
+  if (menu) menu.classList.remove('open');
+  updateLangFab();
+}
+
+document.addEventListener('click', function(e) {
+  var fab = document.getElementById('lang-fab');
+  if (fab && !fab.contains(e.target)) {
+    var menu = document.getElementById('lang-fab-menu');
+    if (menu) menu.classList.remove('open');
+  }
+});
+
+</script>
+
+<!-- DIGITAL CONTRACT SIGNATURE SCREEN -->
+<div id="signature-screen">
+  <div class="sig-topbar">
+    <div style="font-size:15px;font-weight:800;">Rental Agreement</div>
+    <div style="font-size:11px;color:var(--muted);">GOGO Fleet</div>
+  </div>
+  <div class="sig-scroll" id="sig-scroll-area">
+    <!-- Contract content injected by JS -->
+  </div>
+  <div class="sig-footer">
+    <button id="sig-submit-btn" onclick="submitSignature()"
+      style="width:100%;background:var(--accent);color:var(--bg);border:none;border-radius:12px;padding:16px;font-size:16px;font-weight:800;cursor:pointer;opacity:.4;" disabled>
+      Sign &amp; Accept Contract
+    </button>
+    <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">
+      By signing you agree to all terms above
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
