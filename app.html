@@ -1501,7 +1501,7 @@ async function submitAssignRenter(carId) {
   try{showSync('Saving…');const existing=state.renters.filter(r=>r.car_id===carId&&r.active);for(const r of existing)await dbUpdate('renters',r.id,{active:false});const renter=await dbInsert('renters',{car_id:carId,name,phone,email:val('r-email'),license,platform:val('r-platform')||'DoorDash',contract_start:val('c-start')||today(),contract_end:val('c-end')||addDays(today(),28),weekly_rent:numVal('c-rent')||400,protection_fee:numVal('c-pfee')||126,deposit:numVal('c-deposit')||600,active:true,owner_id:ownerIdForData(),sms_consent:true,sms_consent_at:new Date().toISOString(),sms_opted_out:false});await dbUpdate('cars',carId,{status:'rented'});state.renters=state.renters.filter(r=>!(r.car_id===carId&&r.active));state.renters.push(renter);const cidx=state.cars.findIndex(c=>c.id===carId);if(cidx>=0)state.cars[cidx].status='rented';closeSheet();showToast('Contract started!');hideSyncBar();
     // Show portal link info
     setTimeout(() => {
-      const portalUrl = window.location.origin + window.location.pathname + '/renter';
+      const portalUrl = window.location.origin + window.location.pathname + '/renter.html';
       showToast('Share portal link with renter: ' + portalUrl);
     }, 3000);
     navigate('car',carId);}catch(e){showToast('Save failed: '+e.message,'error');}
@@ -3334,7 +3334,7 @@ async function initiateStripePayment(weekNum, amount) {
   const btn = document.getElementById('rp-stripe-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
   try {
-    const portalUrl = window.location.origin + window.location.pathname + '/renter';
+    const portalUrl = window.location.origin + window.location.pathname + '/renter.html';
     const res = await fetch(FUNCTIONS_URL + '/create-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_KEY },
@@ -3361,7 +3361,7 @@ function checkStripeReturn() {
   const params = new URLSearchParams(window.location.search);
   const status = params.get('payment');
   if (!status) return;
-  window.history.replaceState({}, '', window.location.pathname + '/renter');
+  window.history.replaceState({}, '', window.location.pathname + '/renter.html');
   if (status === 'success') {
     setTimeout(async () => {
       showToast('Payment successful! ✓');
@@ -3928,7 +3928,7 @@ function sendLocalNotification(title, body, url) {
         body,
         icon: '/icon-192.png',
         badge: '/icon-192.png',
-        data: { url: url || '/app' },
+        data: { url: url || '/app.html' },
         vibrate: [100, 50, 100],
       });
     });
@@ -3950,7 +3950,7 @@ function checkNotificationTriggers() {
       sendLocalNotification(
         'Payment overdue',
         `${r.name} — Week ${weekNum} of $${weeklyTotal} not received`,
-        '/app'
+        '/app.html'
       );
     }
     // Contract expiring in 2 days
@@ -3958,7 +3958,7 @@ function checkNotificationTriggers() {
       sendLocalNotification(
         'Contract expiring soon',
         `${r.name}'s contract ends in 2 days`,
-        '/app'
+        '/app.html'
       );
     }
   });
