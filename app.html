@@ -448,6 +448,47 @@
   .push-banner-text { flex:1; font-size:13px; color:var(--muted); line-height:1.5; }
   .push-banner-btn { background:var(--accent); color:var(--bg); border:none; border-radius:20px; padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer; flex-shrink:0; }
 
+
+  /* ── PAYMENT METHOD BANNER ── */
+  .payment-banner { background:linear-gradient(135deg,#1A1A1A,#111111); border:1px solid #3A3A3A; border-radius:14px; padding:16px 18px; margin-bottom:16px; display:flex; align-items:center; gap:12px; }
+  .payment-banner-icon { flex-shrink:0; color:#CCCCCC; }
+  .payment-banner-body { flex:1; min-width:0; }
+  .payment-banner-title { font-size:13px; font-weight:700; color:var(--text); margin-bottom:3px; }
+  .payment-banner-sub { font-size:12px; color:var(--muted); line-height:1.5; }
+  .payment-banner-btn { background:var(--accent); color:var(--bg); border:none; border-radius:20px; padding:8px 16px; font-size:12px; font-weight:700; cursor:pointer; flex-shrink:0; white-space:nowrap; }
+
+
+  /* ── TERMS OF SERVICE GATE ── */
+  #tos-gate { position:fixed; inset:0; background:var(--bg); z-index:500; display:none; flex-direction:column; overflow:hidden; }
+  #tos-gate.active { display:flex; }
+  .tos-header { background:var(--surface); border-bottom:1px solid var(--border); padding:calc(var(--safe-top) + 16px) 20px 16px; flex-shrink:0; text-align:center; }
+  .tos-scroll { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:20px 18px; }
+  .tos-footer { background:var(--surface); border-top:1px solid var(--border); padding:16px 18px calc(var(--safe-bottom) + 16px); flex-shrink:0; }
+  .tos-clause { font-size:13px; color:var(--muted); padding:10px 0; border-bottom:1px solid var(--dim); line-height:1.6; }
+  .tos-clause:last-child { border-bottom:none; }
+
+
+  /* ── TERMS OF SERVICE SCREEN ── */
+  #tos-screen { position:fixed; inset:0; background:var(--bg); z-index:500; display:none; flex-direction:column; }
+  #tos-screen.active { display:flex; }
+  .tos-header { background:var(--surface); border-bottom:1px solid var(--border); padding:calc(var(--safe-top) + 16px) 20px 16px; flex-shrink:0; text-align:center; }
+  .tos-scroll { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:24px 20px; }
+  .tos-footer { background:var(--surface); border-top:1px solid var(--border); padding:16px 20px calc(var(--safe-bottom) + 16px); flex-shrink:0; }
+  .tos-clause { font-size:13px; color:var(--muted); padding:10px 0; border-bottom:1px solid var(--dim); line-height:1.6; }
+  .tos-clause:last-child { border-bottom:none; }
+  .tos-clause strong { color:var(--text); }
+
+
+  /* ── TERMS OF SERVICE GATE ── */
+  #tos-screen { position:fixed; inset:0; background:var(--bg); z-index:500; display:none; flex-direction:column; overflow:hidden; }
+  #tos-screen.active { display:flex; }
+  .tos-header { background:var(--surface); border-bottom:1px solid var(--border); padding:calc(var(--safe-top) + 14px) 20px 14px; flex-shrink:0; }
+  .tos-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:20px 18px; }
+  .tos-footer { background:var(--surface); border-top:1px solid var(--border); padding:16px 18px calc(var(--safe-bottom) + 16px); flex-shrink:0; }
+  .tos-clause { font-size:13px; color:var(--muted); padding:10px 0; border-bottom:1px solid var(--dim); line-height:1.6; }
+  .tos-clause:last-child { border-bottom:none; }
+  .tos-clause strong { color:var(--text); }
+
 </style>
 </head>
 <body>
@@ -843,7 +884,12 @@ async function restoreSession() {
       currentUser = session.user;
     }
     await loadProfile();
-    bootApp();
+    // Check ToS acceptance before booting
+    if (checkTosAccepted()) {
+      bootApp();
+    } else {
+      showTosScreen();
+    }
   } catch(e) {
     localStorage.removeItem('gogoautos-session');
     showAuthScreen('login');
@@ -1089,6 +1135,20 @@ function renderDashboard() {
       <div class="kpi"><div class="kpi-label">Fleet Utilization</div><div class="kpi-value" style="color:var(--orange)">${util}%</div><div class="kpi-sub">${rented.length}/${cars.length} cars</div></div>
       <div class="kpi"><div class="kpi-label">All-Time Revenue</div><div class="kpi-value" style="color:var(--gold)">${$(totalRev)}</div><div class="kpi-sub">total collected</div></div>
     </div>
+    <div id="payment-method-banner" class="payment-banner" style="display:none;">
+      <div class="payment-banner-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      </div>
+      <div class="payment-banner-body">
+        <div class="payment-banner-title">No payment method on file</div>
+        <div class="payment-banner-sub">A card is required to use GOGO Fleet. This notice will appear on every login until fulfilled or your account is deactivated.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0;">
+        <button class="payment-banner-btn" onclick="openAddCardSheet()">Add Card</button>
+
+      </div>
+    </div>
+
     <div id="push-banner" class="push-banner" style="display:none;">
       <div class="push-banner-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -2191,6 +2251,79 @@ function exportReportPDF() {
       <span>Documents</span>
     </button>
   </nav>
+</div>
+
+
+<!-- TERMS OF SERVICE GATE -->
+<div id="tos-gate">
+  <div class="tos-header">
+    <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Before you continue</div>
+    <div style="font-size:18px;font-weight:900;">Terms of Service</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px;">Please read and accept to use GOGO Fleet</div>
+  </div>
+  <div class="tos-scroll" id="tos-scroll">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:800;margin-bottom:12px;">Summary of Key Points</div>
+      <div class="tos-clause">You are responsible for maintaining proper licensing and insurance for all vehicles.</div>
+      <div class="tos-clause">GOGO Fleet is a software tool — all rental agreements are between you and your renters.</div>
+      <div class="tos-clause">You must obtain renter consent before sending SMS communications.</div>
+      <div class="tos-clause">A valid payment method is required to maintain your account.</div>
+      <div class="tos-clause">You may not use the platform for unlawful purposes.</div>
+      <div class="tos-clause">We may suspend accounts for Terms violations or non-payment.</div>
+      <div class="tos-clause">Governing law: State of Texas, Harris County.</div>
+    </div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px;">
+      By accepting, you agree to the full <a href="https://gogofleet.app/terms.html" target="_blank" style="color:var(--accent);">Terms of Service</a> and <a href="https://gogofleet.app/privacy.html" target="_blank" style="color:var(--accent);">Privacy Policy</a>.
+    </div>
+    <div style="height:20px;"></div>
+  </div>
+  <div class="tos-footer">
+    <label style="display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;cursor:pointer;">
+      <input type="checkbox" id="tos-checkbox" onchange="updateTosBtn()" style="width:18px;height:18px;margin-top:2px;accent-color:var(--accent);flex-shrink:0;">
+      <span style="font-size:13px;color:var(--muted);line-height:1.5;">I have read and agree to the Terms of Service and Privacy Policy</span>
+    </label>
+    <button id="tos-accept-btn" onclick="acceptTos()" disabled
+      style="width:100%;background:var(--accent);color:var(--bg);border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;opacity:.4;">
+      Accept &amp; Continue →
+    </button>
+    <button onclick="signOut()" style="width:100%;background:transparent;border:none;color:var(--muted);padding:12px;font-size:13px;cursor:pointer;margin-top:6px;">
+      Decline &amp; Sign Out
+    </button>
+  </div>
+</div>
+
+
+<!-- TERMS OF SERVICE SCREEN -->
+<div id="tos-screen">
+  <div class="tos-header">
+    <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Before you continue</div>
+    <div style="font-size:18px;font-weight:900;">Terms of Service</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px;">Please read and accept to use GOGO Fleet</div>
+  </div>
+  <div class="tos-scroll" id="tos-scroll">
+    <div class="tos-clause"><strong>1. Fleet Owner Responsibility</strong> — You are solely responsible for all aspects of your vehicle rental business including compliance with local laws, insurance, licensing, and all agreements with your renters.</div>
+    <div class="tos-clause"><strong>2. Payment Method Required</strong> — A valid payment method must be on file at all times. Failure to maintain one may result in account suspension when billing begins.</div>
+    <div class="tos-clause"><strong>3. SMS Communications</strong> — You must obtain explicit consent from renters before sending SMS messages and comply with TCPA regulations and A2P 10DLC requirements. You are solely liable for any violations.</div>
+    <div class="tos-clause"><strong>4. Renter Data</strong> — You may only use renter personal data for legitimate rental business purposes. You may not sell, share, or misuse renter information.</div>
+    <div class="tos-clause"><strong>5. Payment Processing</strong> — Payments are processed by Stripe. You are responsible for all chargebacks, disputes, and refunds with your renters. GOGO Fleet is not a party to rental transactions.</div>
+    <div class="tos-clause"><strong>6. Marketplace Listings</strong> — By listing vehicles publicly you confirm you have legal authority to rent them and that all information is accurate.</div>
+    <div class="tos-clause"><strong>7. Prohibited Uses</strong> — You may not use GOGO Fleet for illegal rentals, harassment, spam, fraud, or any activity that violates applicable law.</div>
+    <div class="tos-clause"><strong>8. Limitation of Liability</strong> — GOGO Fleet is provided "as is." We are not liable for indirect, incidental, or consequential damages arising from your use of the Service.</div>
+    <div class="tos-clause"><strong>9. Indemnification</strong> — You agree to indemnify GOGO Fleet from any claims arising from your rental operations, use of the Service, or violation of these Terms.</div>
+    <div class="tos-clause"><strong>10. Governing Law</strong> — These Terms are governed by the laws of the State of Texas, Harris County.</div>
+    <div style="margin-top:16px;font-size:12px;color:var(--muted);text-align:center;">
+      <a href="https://gogofleet.app/terms.html" target="_blank" style="color:var(--muted);">Read full Terms of Service →</a>
+    </div>
+  </div>
+  <div class="tos-footer">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;" onclick="document.getElementById('tos-cb').click()">
+      <input type="checkbox" id="tos-cb" onchange="updateTosBtn()" style="width:18px;height:18px;accent-color:var(--accent);flex-shrink:0;">
+      <span style="font-size:13px;color:var(--muted);line-height:1.5;">I have read and agree to the <strong style="color:var(--text);">Terms of Service</strong> and <a href="https://gogofleet.app/privacy.html" target="_blank" style="color:var(--text);">Privacy Policy</a></span>
+    </div>
+    <button id="tos-accept-btn" onclick="acceptTos()" disabled style="width:100%;background:var(--accent);color:var(--bg);border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;opacity:.4;">
+      Accept &amp; Continue →
+    </button>
+  </div>
 </div>
 
 </body></html>`);
@@ -4077,6 +4210,176 @@ function replyToInquiry(phone, name) {
   window.location.href = `sms:${phone}?body=${msg}`;
 }
 
+
+/* ═══════════════════════════════════════
+   PAYMENT METHOD CHECK
+═══════════════════════════════════════ */
+async function checkPaymentMethodOnFile() {
+  if (!isOwner()) return;
+  // Check if owner has stripe_payment_method stored in their user metadata
+  const hasPm = currentUser?.user_metadata?.stripe_payment_method;
+  const banner = document.getElementById('payment-method-banner');
+  if (banner) {
+    // Show every login until card is on file — no dismiss option
+    banner.style.display = hasPm ? 'none' : 'flex';
+  }
+}
+
+function dismissPaymentBanner() {
+  // No-op — banner cannot be dismissed until card is added
+  // This prevents bypassing the requirement
+}
+
+function addPaymentMethod() {
+  // Open Stripe billing portal or redirect to add card flow
+  openSheet('add-payment-method');
+}
+
+
+function openAddCardSheet() {
+  document.getElementById('sheet-container').innerHTML = `
+    <div class="sheet-overlay" id="sheet-overlay" onclick="if(event.target.id==='sheet-overlay')closeSheet()">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header">
+          <div class="sheet-title">Add Payment Method</div>
+          <button class="sheet-close" onclick="closeSheet()">✕</button>
+        </div>
+        <div class="sheet-body">
+          <div style="text-align:center;padding:16px 0;">
+            <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:20px;">
+              Add a credit or debit card to keep your GOGO Fleet account active.<br>
+              <strong style="color:var(--text);">You won't be charged until billing starts.</strong>
+            </div>
+            <a href="https://gogofleet.app/signup.html" style="display:inline-block;background:var(--accent);color:var(--bg);padding:12px 24px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;margin-bottom:12px;">
+              Update Payment Method →
+            </a>
+            <div style="font-size:11px;color:var(--muted);margin-top:8px;">Secured by Stripe</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+
+/* ═══════════════════════════════════════
+   TERMS OF SERVICE GATE
+═══════════════════════════════════════ */
+function checkTosAccepted() {
+  if (!isOwner()) return; // Only owners need to accept ToS
+  const accepted = myProfile?.tos_accepted;
+  if (!accepted) {
+    document.getElementById('tos-gate').classList.add('active');
+  }
+}
+
+function updateTosBtn() {
+  const cb = document.getElementById('tos-checkbox');
+  const btn = document.getElementById('tos-accept-btn');
+  if (btn) {
+    btn.disabled = !cb?.checked;
+    btn.style.opacity = cb?.checked ? '1' : '.4';
+  }
+}
+
+async function acceptTos() {
+  const btn = document.getElementById('tos-accept-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    await dbUpdate('team_members', myProfile.id, {
+      tos_accepted: true,
+      tos_accepted_at: new Date().toISOString()
+    });
+    myProfile.tos_accepted = true;
+    document.getElementById('tos-gate').classList.remove('active');
+    showToast('Terms accepted. Welcome to GOGO Fleet!');
+  } catch(e) {
+    showToast('Could not save. Try again.', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Accept & Continue →'; btn.style.opacity = '1'; }
+  }
+}
+
+
+/* ═══════════════════════════════════════
+   TERMS OF SERVICE
+═══════════════════════════════════════ */
+function checkTosAccepted() {
+  // Check if this user has already accepted ToS
+  const accepted = localStorage.getItem('gogo-tos-accepted-' + (currentUser?.id || ''));
+  return !!accepted;
+}
+
+function showTosScreen() {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('tos-screen').classList.add('active');
+}
+
+function updateTosBtn() {
+  const cb = document.getElementById('tos-cb');
+  const btn = document.getElementById('tos-accept-btn');
+  if (btn) {
+    btn.disabled = !cb?.checked;
+    btn.style.opacity = cb?.checked ? '1' : '0.4';
+  }
+}
+
+async function acceptTos() {
+  const cb = document.getElementById('tos-cb');
+  if (!cb?.checked) return;
+  // Store acceptance with timestamp
+  localStorage.setItem('gogo-tos-accepted-' + currentUser.id, new Date().toISOString());
+  // Also store in Supabase for audit trail
+  try {
+    await dbUpdate('team_members', myProfile.id, {
+      tos_accepted: true,
+      tos_accepted_at: new Date().toISOString()
+    });
+  } catch(e) { console.warn('ToS save failed:', e); }
+  document.getElementById('tos-screen').classList.remove('active');
+  bootApp();
+}
+
+
+/* ═══════════════════════════════════════
+   TERMS OF SERVICE GATE
+═══════════════════════════════════════ */
+function checkTosAccepted() {
+  // Check if user has accepted TOS — stored in localStorage keyed by user ID
+  const key = 'gogo-tos-' + (currentUser?.id || '');
+  return localStorage.getItem(key) === 'accepted';
+}
+
+function showTosScreen() {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('tos-screen').classList.add('active');
+}
+
+function updateTosBtn() {
+  const cb = document.getElementById('tos-checkbox');
+  const btn = document.getElementById('tos-accept-btn');
+  if (btn) {
+    btn.disabled = !cb?.checked;
+    btn.style.opacity = cb?.checked ? '1' : '0.4';
+    btn.style.cursor = cb?.checked ? 'pointer' : 'not-allowed';
+  }
+}
+
+function acceptTos() {
+  const cb = document.getElementById('tos-checkbox');
+  if (!cb?.checked) return;
+  // Save acceptance keyed by user ID with timestamp
+  const key = 'gogo-tos-' + (currentUser?.id || '');
+  localStorage.setItem(key, 'accepted');
+  localStorage.setItem(key + '-date', new Date().toISOString());
+  // Hide TOS screen and boot app
+  document.getElementById('tos-screen').classList.remove('active');
+  bootApp();
+}
+
 /* ═══════════════════════════════════════
    SERVICE WORKER
 ═══════════════════════════════════════ */
@@ -4093,5 +4396,43 @@ window.addEventListener('load', () => {
   }
 });
 </script>
+
+<!-- TERMS OF SERVICE GATE -->
+<div id="tos-screen">
+  <div class="tos-header">
+    <div style="font-size:16px;font-weight:900;margin-bottom:4px;">Terms of Service</div>
+    <div style="font-size:12px;color:var(--muted);">Please read and accept to continue</div>
+  </div>
+  <div class="tos-body" id="tos-scroll">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:12px;color:var(--muted);line-height:1.6;">By using GOGO Fleet you agree to the following terms. Scroll to read all terms before accepting.</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;">
+      <div class="tos-clause"><strong>1. Platform Use.</strong> GOGO Fleet provides fleet management software only. We are not a party to any rental agreements between you and your renters.</div>
+      <div class="tos-clause"><strong>2. Legal Compliance.</strong> You are responsible for complying with all laws governing vehicle rental in your jurisdiction, including insurance, inspections, and licensing requirements.</div>
+      <div class="tos-clause"><strong>3. Renter Data.</strong> You are solely responsible for collecting, storing, and using renter data in compliance with applicable privacy laws. You must obtain proper consent before sending SMS communications.</div>
+      <div class="tos-clause"><strong>4. Payment.</strong> A valid payment method is required. You authorize GOGO Fleet to charge applicable fees when billing begins. We will provide advance notice before any charges.</div>
+      <div class="tos-clause"><strong>5. Account Security.</strong> You are responsible for all activity under your account. Do not share credentials. Notify us immediately of unauthorized access.</div>
+      <div class="tos-clause"><strong>6. Prohibited Conduct.</strong> You may not use the platform for fraud, harassment, illegal activities, or any purpose that violates applicable law.</div>
+      <div class="tos-clause"><strong>7. Limitation of Liability.</strong> GOGO Fleet is not liable for disputes between you and renters, vehicle damage, accidents, or losses arising from your rental operations.</div>
+      <div class="tos-clause"><strong>8. Indemnification.</strong> You agree to indemnify GOGO Fleet from any claims arising from your use of the platform or your rental operations.</div>
+      <div class="tos-clause"><strong>9. Termination.</strong> We may suspend or terminate accounts for violations of these terms, non-payment, or at our discretion with notice.</div>
+      <div class="tos-clause"><strong>10. Governing Law.</strong> These terms are governed by Texas law. Disputes shall be resolved in Harris County, Texas.</div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:8px;">
+      Read the full Terms of Service at <a href="https://gogofleet.app/terms.html" target="_blank" style="color:var(--text);">gogofleet.app/terms</a>
+    </div>
+  </div>
+  <div class="tos-footer">
+    <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:14px;">
+      <input type="checkbox" id="tos-checkbox" onchange="updateTosBtn()" style="margin-top:3px;width:18px;height:18px;flex-shrink:0;accent-color:var(--accent);">
+      <span style="font-size:13px;color:var(--muted);line-height:1.5;">I have read and agree to the GOGO Fleet <a href="https://gogofleet.app/terms.html" target="_blank" style="color:var(--text);">Terms of Service</a> and <a href="https://gogofleet.app/privacy.html" target="_blank" style="color:var(--text);">Privacy Policy</a></span>
+    </label>
+    <button id="tos-accept-btn" onclick="acceptTos()" disabled style="width:100%;background:var(--accent);color:var(--bg);border:none;border-radius:12px;padding:16px;font-size:16px;font-weight:800;cursor:not-allowed;opacity:.4;">
+      Accept &amp; Continue
+    </button>
+  </div>
+</div>
+
 </body>
 </html>
