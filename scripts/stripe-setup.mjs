@@ -4,8 +4,8 @@ const key = process.env.STRIPE_SECRET_KEY;
 if (!key) { console.error('Set STRIPE_SECRET_KEY'); process.exit(1); }
 const PLANS = [
   ['gogo_starter_monthly', 'GOGO Fleet Starter (up to 5 vehicles)', 4900],
-  ['gogo_growth_monthly', 'GOGO Fleet Growth (up to 15 vehicles)', 9900],
-  ['gogo_scale_monthly', 'GOGO Fleet Scale (unlimited vehicles)', 19900],
+  ['gogo_growth_monthly', 'GOGO Fleet Growth (up to 15 vehicles)', 14900],
+  ['gogo_scale_monthly', 'GOGO Fleet Scale (unlimited vehicles)', 114900],
 ];
 const call = async (path, body) => {
   const r = await fetch('https://api.stripe.com/v1/' + path, {
