@@ -167,19 +167,16 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; backg
   <!-- Step 3: Payment -->
   <div id="step-3" style="display:none;">
     <div class="signup-title">Almost there</div>
-    <div class="signup-sub">We collect a card to prevent abuse. You won't be charged — GOGO Fleet is free for early users.</div>
+    <div class="signup-sub">Start your 14-day free trial. No credit card needed.</div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;">
-      <div style="font-size:13px;font-weight:700;margin-bottom:4px;">Free Plan</div>
-      <div style="font-size:24px;font-weight:900;margin-bottom:4px;">$0<span style="font-size:14px;color:var(--muted);font-weight:400;">/month</span></div>
-      <div style="font-size:12px;color:var(--muted);">Full access · All features · No charge until we notify you</div>
-    </div>
-    <div id="card-element-wrap" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;min-height:46px;">
-      <div id="card-element"></div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px;">14-day free trial</div>
+      <div style="font-size:24px;font-weight:900;margin-bottom:4px;">$0<span style="font-size:14px;color:var(--muted);font-weight:400;"> today</span></div>
+      <div style="font-size:12px;color:var(--muted);">All features · Plans start at $49/month after your trial · Cancel anytime</div>
     </div>
     <button class="btn-primary" id="signup-submit-btn" onclick="submitSignup()">Create My Fleet →</button>
     <div class="terms-note">
       By creating an account you agree to our <a href="/privacy" target="_blank">Privacy Policy</a>.<br>
-      Your card is stored securely by Stripe. You will not be charged today.
+      No card required for the trial.
     </div>
     <button onclick="goStep2()" style="width:100%;background:transparent;border:none;color:var(--muted);padding:10px;font-size:13px;cursor:pointer;margin-top:6px;">← Back</button>
   </div>
@@ -193,7 +190,6 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; backg
   </div>
 </div>
 
-<script src="https://js.stripe.com/v3/" crossorigin="anonymous"></script>
 <script>
 const SB_URL = 'https://pbglpxipzidwhaxganzx.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBiZ2xweGlwemlkd2hheGdhbnp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMDU4NTEsImV4cCI6MjA4OTU4MTg1MX0.kMncp_z2-lzotOho-Yw-8uQI5hkya2SY96ahADQW2Jk';
@@ -201,37 +197,7 @@ const STRIPE_PK = 'pk_live_51TDTneG3DXCsLmgEJP4dwKG7gTdtPA10Tv5VSIZ3jLNERWMdWHM4
 
 let stripe, cardElement, signupData = {};
 
-// Init Stripe
-window.addEventListener('load', () => {
-  try {
-    if (typeof Stripe === 'undefined') {
-      document.getElementById('card-element-wrap').innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px;">Card collection unavailable — you can still create your account.</div>';
-      return;
-    }
-    stripe = Stripe(STRIPE_PK);
-    const elements = stripe.elements({
-      appearance: {
-        theme: 'night',
-        variables: {
-          colorBackground: '#181818',
-          colorText: '#F2F2F2',
-          colorTextPlaceholder: '#7A7A7A',
-          borderRadius: '8px',
-          fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
-        }
-      }
-    });
-    cardElement = elements.create('card', {
-      style: {
-        base: { fontSize:'15px', color:'#F2F2F2', '::placeholder':{ color:'#7A7A7A' } }
-      }
-    });
-    cardElement.mount('#card-element');
-  } catch(e) {
-    console.warn('Stripe init failed:', e);
-    document.getElementById('card-element-wrap').innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px;">Card collection unavailable — you can still create your account.</div>';
-  }
-});
+// Card collection removed: trial needs no card.
 
 function showError(msg) {
   const el = document.getElementById('error-msg');
@@ -280,7 +246,7 @@ async function submitSignup() {
   try {
     // 1. Optionally save card via Stripe SetupIntent
     let paymentMethodId = null;
-    if (stripe && cardElement) {
+    if (false && stripe && cardElement) {
       try {
         const setupRes = await fetch('https://pbglpxipzidwhaxganzx.supabase.co/functions/v1/create-setup-intent', {
           method: 'POST',

@@ -437,7 +437,7 @@
 
 
   /* ── DIGITAL CONTRACT & SIGNATURE ── */
-  #signature-screen{position:fixed;inset:0;background:var(--bg);z-index:800;display:none;flex-direction:column;overflow:hidden;}
+  #signature-screen{position:fixed;inset:0;background:var(--bg);z-index:1100;display:none;flex-direction:column;overflow:hidden;}
   #signature-screen.active{display:flex;}
   .sig-topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:calc(var(--safe-top) + 14px) 20px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
   .sig-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 18px;}
@@ -696,7 +696,7 @@ async function rpVerifyPin() {
     const d = await rpApi('login', { phone: rpState.phone, pin: rpState.pin });
     rpState.token = d.token;
     rpState.renter = d.renter;
-    rpState.car = d.car;
+    rpState.car = d.car; rpState.operator = d.operator; rpState.payEnabled = !!d.pay_enabled;
     rpState.payments = d.payments || [];
     rpState.contractSigned = !!d.contract_signed;
     rpState.docs = d.docs || {};
@@ -704,7 +704,9 @@ async function rpVerifyPin() {
     await showContractIfNeeded();
   } catch (e) {
     if (e.status === 429) { showToast(e.message, 'error'); renderRPLogin(); return; }
-    renderRPPinEntry(true);
+    if (e.status === 401 || e.status === 400) { renderRPPinEntry(true); return; }
+    console.error('Portal error:', e);
+    showToast('Something went wrong. Please try again.', 'error'); renderRPPinEntry(false);
   }
 }
 
@@ -712,7 +714,7 @@ async function rpLoadData() {
   try {
     const d = await rpApi('data');
     rpState.renter = d.renter;
-    rpState.car = d.car;
+    rpState.car = d.car; rpState.operator = d.operator; rpState.payEnabled = !!d.pay_enabled;
     rpState.payments = d.payments || [];
   } catch (e) {
     console.error('Portal data load:', e);
@@ -751,7 +753,9 @@ function renderRPHome() {
   const pct = Math.min(100, Math.round(totalPaid / totalDue * 100));
 
   let stripeSection = '';
-  if (balance > 0) {
+  if (balance > 0 && !rpState.payEnabled) {
+    stripeSection = `<div class="stripe-box"><div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Make a Payment</div><div style="font-size:28px;font-weight:900;margin-bottom:4px;">${$(weeklyTotal)}</div><div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Week ${currentWeek} payment due</div><div style="font-size:13px;color:var(--muted);line-height:1.6;">Pay your operator directly${rpState.operator?.phone?" at "+esc(rpState.operator.phone):""}. Your payment will be recorded here once they confirm it.</div></div>`;
+  } else if (balance > 0) {
     stripeSection = `
       <div class="stripe-box">
         <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Make a Payment</div>
@@ -888,13 +892,13 @@ function renderRPPayments() {
       </div>`).join('')}
 
     <div style="margin-top:16px;">
-      <div class="stripe-box" style="margin-bottom:10px;">
+      ${!rpState.payEnabled ? `<div class="stripe-box" style="margin-bottom:10px;"><div style="font-size:13px;color:var(--muted);line-height:1.6;">Pay your operator directly${rpState.operator?.phone?" at "+esc(rpState.operator.phone):""}. Your payment will be recorded here once they confirm it.</div></div>` : `<div class="stripe-box" style="margin-bottom:10px;">
         <button onclick="initiateStripePayment(${currentWeek}, ${weeklyTotal})"
           class="stripe-btn" style="margin-bottom:10px;">
           Pay Week ${currentWeek} &mdash; ${$(weeklyTotal)} with Card
         </button>
         <div style="font-size:11px;color:var(--muted);">Secured by Stripe</div>
-      </div>
+      </div>`}
       <div style="background:var(--surface);border-radius:10px;padding:12px;font-size:12px;color:var(--muted);line-height:1.7;text-align:center;">
         Or pay via <strong style="color:var(--text);">Zelle &middot; Cash App &middot; Venmo &middot; Cash</strong><br>
         Contact your fleet manager to record cash payments
@@ -928,7 +932,7 @@ function renderRPContract() {
     <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px;">
       <div style="padding:16px;border-bottom:1px solid var(--border);">
         <div style="font-size:16px;font-weight:800;margin-bottom:2px;">Rental Agreement</div>
-        <div style="font-size:12px;color:var(--muted);">GOGO Fleet · Houston, Texas</div>
+        <div style="font-size:12px;color:var(--muted);">${esc(rpState.operator?.name||"Your rental company")}${rpState.operator?.phone?" · "+esc(rpState.operator.phone):""}</div>
       </div>
       ${terms.map(([k,v]) => `
         <div style="padding:10px 16px;border-bottom:1px solid var(--dim);display:flex;justify-content:space-between;align-items:center;gap:12px;">
@@ -1154,7 +1158,7 @@ function showContractSignature() {
   const weeklyTotal = +r.weekly_rent + +r.protection_fee;
 
   const clauses = [
-    `This Rental Agreement is entered into between GOGO Fleet ("Owner") and ${r.name} ("Renter") effective ${fmtDate(r.contract_start)}.`,
+    `This Rental Agreement is entered into between ${esc(rpState.operator?.name||"the Owner")} ("Owner") and ${r.name} ("Renter") effective ${fmtDate(r.contract_start)}.`,
     `Renter agrees to lease the vehicle: ${car ? car.year+' '+car.make+' '+car.model+' ('+car.plate+')' : 'as assigned'} for the period ${fmtDate(r.contract_start)} through ${fmtDate(r.contract_end)}.`,
     `Renter agrees to pay $${(+r.weekly_rent).toLocaleString()} weekly rent plus $${(+r.protection_fee).toLocaleString()} weekly protection fee, totaling $${weeklyTotal.toLocaleString()} per week, due every 7 days from contract start.`,
     `A security deposit of $${(+r.deposit).toLocaleString()} has been collected and is refundable upon return of the vehicle in its original condition.`,
@@ -1175,7 +1179,7 @@ function showContractSignature() {
     </div>
 
     <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;">
-      <div style="font-size:13px;font-weight:800;margin-bottom:12px;">GOGO Fleet — Rental Agreement</div>
+      <div style="font-size:13px;font-weight:800;margin-bottom:12px;">${esc(rpState.operator?.name||"")} — Rental Agreement</div>
       ${clauses.map((c,i) => `<div class="contract-clause"><strong style="color:var(--text);">${i+1}.</strong> ${esc(c)}</div>`).join('')}
     </div>
 
@@ -1193,6 +1197,8 @@ function showContractSignature() {
 
     <div style="height:20px;"></div>`;
 
+  const so = document.getElementById('sig-operator');
+  if (so) so.textContent = (rpState.operator?.name ? rpState.operator.name + ' · ' : '') + 'powered by GOGO Fleet';
   // Init canvas after render
   setTimeout(initSignatureCanvas, 100);
 }
@@ -1407,7 +1413,7 @@ document.addEventListener('click', function(e) {
 <div id="signature-screen">
   <div class="sig-topbar">
     <div style="font-size:15px;font-weight:800;">Rental Agreement</div>
-    <div style="font-size:11px;color:var(--muted);">GOGO Fleet</div>
+    <div id="sig-operator" style="font-size:11px;color:var(--muted);">powered by GOGO Fleet</div>
   </div>
   <div class="sig-scroll" id="sig-scroll-area">
     <!-- Contract content injected by JS -->
