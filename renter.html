@@ -437,7 +437,7 @@
 
 
   /* ── DIGITAL CONTRACT & SIGNATURE ── */
-  #signature-screen{position:fixed;inset:0;background:var(--bg);z-index:800;display:none;flex-direction:column;overflow:hidden;}
+  #signature-screen{position:fixed;inset:0;background:var(--bg);z-index:1100;display:none;flex-direction:column;overflow:hidden;}
   #signature-screen.active{display:flex;}
   .sig-topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:calc(var(--safe-top) + 14px) 20px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
   .sig-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 18px;}
@@ -704,7 +704,9 @@ async function rpVerifyPin() {
     await showContractIfNeeded();
   } catch (e) {
     if (e.status === 429) { showToast(e.message, 'error'); renderRPLogin(); return; }
-    renderRPPinEntry(true);
+    if (e.status === 401 || e.status === 400) { renderRPPinEntry(true); return; }
+    console.error('Portal error:', e);
+    showToast('Something went wrong. Please try again.', 'error'); renderRPPinEntry(false);
   }
 }
 
@@ -1195,6 +1197,8 @@ function showContractSignature() {
 
     <div style="height:20px;"></div>`;
 
+  const so = document.getElementById('sig-operator');
+  if (so) so.textContent = (rpState.operator?.name ? rpState.operator.name + ' · ' : '') + 'powered by GOGO Fleet';
   // Init canvas after render
   setTimeout(initSignatureCanvas, 100);
 }
@@ -1409,7 +1413,7 @@ document.addEventListener('click', function(e) {
 <div id="signature-screen">
   <div class="sig-topbar">
     <div style="font-size:15px;font-weight:800;">Rental Agreement</div>
-    <div style="font-size:11px;color:var(--muted);">${esc(rpState.operator?.name||"")} · powered by GOGO Fleet</div>
+    <div id="sig-operator" style="font-size:11px;color:var(--muted);">powered by GOGO Fleet</div>
   </div>
   <div class="sig-scroll" id="sig-scroll-area">
     <!-- Contract content injected by JS -->
