@@ -1,0 +1,9 @@
+# Functions called by third parties (not by a signed-in user) skip Supabase's JWT check.
+# They authenticate themselves: Stripe signs its webhook; sms-optout is Twilio's STOP/START webhook.
+# Everything else keeps the default (JWT required — the site sends the public anon key or the user's session).
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.sms-optout]
+verify_jwt = false

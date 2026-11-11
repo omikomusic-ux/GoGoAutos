@@ -513,6 +513,7 @@
   .dmg-return { background:#88888822; border:1px solid #88888844; color:#888888; }
 
 </style>
+<meta name="robots" content="noindex, nofollow">
 </head>
 <body>
 
@@ -2246,38 +2247,6 @@ function exportReportPDF() {
   <div id="photo-lightbox-caption"></div>
 </div>
 
-<!-- ══════════════════════════════════
-     RENTER PORTAL
-══════════════════════════════════ -->
-<div id="renter-portal">
-  <div id="rp-topbar">
-    <div id="rp-logo">GOGO <span style="font-weight:300;opacity:.5;font-size:13px;">fleet</span></div>
-    <div id="rp-topbar-right" style="font-size:12px;color:var(--muted);font-weight:600;"></div>
-  </div>
-  <div id="rp-scroll">
-    <div id="rp-main" class="rp-content"></div>
-  </div>
-  <nav id="rp-nav" style="display:none;">
-    <button class="rp-tab active" data-rptab="home" onclick="rpNavigate('home')">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      <span>Home</span>
-    </button>
-    <button class="rp-tab" data-rptab="payments" onclick="rpNavigate('payments')">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-      <span>Payments</span>
-    </button>
-    <button class="rp-tab" data-rptab="contract" onclick="rpNavigate('contract')">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      <span>Contract</span>
-    </button>
-    <button class="rp-tab" data-rptab="docs" onclick="rpNavigate('docs')">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      <span>Documents</span>
-    </button>
-  </nav>
-</div>
-
-
 <!-- TERMS OF SERVICE GATE -->
 <div id="tos-gate">
   <div class="tos-header">
@@ -2563,10 +2532,8 @@ function closeLightbox() {
    BOUNCIE OAUTH2 + TRACKING ENGINE
 ═══════════════════════════════════════ */
 const BOUNCIE_CLIENT_ID     = 'gogo-autos';
-const BOUNCIE_CLIENT_SECRET = 'YGC4FARnn2QWUqvDLuiEws2M7IhTXjB9CDUkPq4ql2Q1vNlyaQ';
 const BOUNCIE_REDIRECT_URI  = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '') + '/';
 const BOUNCIE_AUTH_URL       = 'https://auth.bouncie.com/dialog/authorize';
-const BOUNCIE_TOKEN_URL      = 'https://auth.bouncie.dev/oauth/token';
 const BOUNCIE_API_URL        = 'https://api.bouncie.dev/v1';
 const BOUNCIE_SCOPE          = 'retrieve_device_info';
 
@@ -2617,18 +2584,18 @@ function startBouncieAuth() {
 
 async function exchangeBouncieCode(code) {
   try {
-    const r = await fetch(BOUNCIE_TOKEN_URL, {
+    // The Bouncie client secret now lives server-side. The bouncie-token function checks that
+    // you're signed in, adds the secret, and returns the access token.
+    for (let i = 0; i < 20 && !currentSession?.access_token; i++) {
+      await new Promise(res => setTimeout(res, 250));   // wait for the saved login to restore
+    }
+    if (!currentSession?.access_token) throw new Error('Sign in again, then reconnect Bouncie');
+    const r = await fetch(FUNCTIONS_URL + '/bouncie-token', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: BOUNCIE_CLIENT_ID,
-        client_secret: BOUNCIE_CLIENT_SECRET,
-        code,
-        redirect_uri: BOUNCIE_REDIRECT_URI
-      })
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + currentSession.access_token },
+      body: JSON.stringify({ code, redirect_uri: BOUNCIE_REDIRECT_URI })
     });
-    if (!r.ok) throw new Error('Token exchange failed: ' + await r.text());
+    if (!r.ok) throw new Error('Token exchange failed');
     const data = await r.json();
     saveBouncieToken(data);
     return data.access_token;
@@ -2995,585 +2962,51 @@ function toggleTheme() {
 
 
 /* ═══════════════════════════════════════
-   RENTER PORTAL ENGINE
+   RENTER PORTAL → renter.html
+   The portal used to be duplicated inside this file. It now lives only in renter.html
+   (which talks to the secure renter-portal function). Old links are forwarded.
 ═══════════════════════════════════════ */
-let rpState = {
-  renter: null,      // renter row from DB
-  car: null,         // car row
-  payments: [],      // their payments
-  pin: '',           // entered PIN
-  phone: '',         // entered phone
-  tab: 'home',
-  authed: false
-};
-
 const BUCKET_URL = `${SB_URL}/storage/v1/object/public/vehicle-photos/`;
 
-// ── DETECT IF RENTER PORTAL SHOULD SHOW ──
 function checkRenterPortalRoute() {
-  const hash = window.location.hash;
   const params = new URLSearchParams(window.location.search);
-  // Trigger portal if /renter or #renter
-  if (hash === '#renter' || params.get('portal') === 'true') {
-    showRenterPortal();
+  if (window.location.hash === '#renter' || params.get('portal') === 'true') {
+    window.location.replace('renter.html');
     return true;
   }
   return false;
 }
 
-function showRenterPortal() {
-  document.getElementById('loading-screen').style.display = 'none';
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('renter-portal').classList.add('active');
-  initTheme();
-  rpState = { renter: null, car: null, payments: [], pin: '', phone: '', tab: 'home', authed: false };
-  checkStripeReturn();
-  renderRPLogin();
-}
-
-function hideRenterPortal() {
-  document.getElementById('renter-portal').classList.remove('active');
-  document.getElementById('rp-nav').style.display = 'none';
-}
-
-// ── PORTAL NAVIGATION ──
-function rpNavigate(tab) {
-  rpState.tab = tab;
-  document.querySelectorAll('.rp-tab').forEach(t => t.classList.toggle('active', t.dataset.rptab === tab));
-  renderRPPage();
-}
-
-function renderRPPage() {
-  const el = document.getElementById('rp-main');
-  el.style.animation = 'fadeIn .2s ease';
-  if (rpState.tab === 'home') renderRPHome();
-  else if (rpState.tab === 'payments') renderRPPayments();
-  else if (rpState.tab === 'contract') renderRPContract();
-  else if (rpState.tab === 'docs') renderRPDocs();
-}
-
-// ── LOGIN FLOW ──
-function renderRPLogin() {
-  document.getElementById('rp-nav').style.display = 'none';
-  document.getElementById('rp-topbar-right').textContent = '';
-  const el = document.getElementById('rp-main');
-  el.innerHTML = `
-    <div style="text-align:center;padding:32px 0 24px;">
-      <div style="font-size:13px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Renter Login</div>
-      <div style="font-size:14px;color:var(--muted);line-height:1.6;">Enter your phone number to access your rental account</div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Phone Number</label>
-      <input class="form-input" id="rp-phone" type="tel" inputmode="tel" placeholder="713-555-0000" style="font-size:18px;text-align:center;letter-spacing:2px;">
-    </div>
-    <button class="btn-primary" onclick="rpSubmitPhone()" style="margin-top:8px;">Continue</button>
-    <div style="text-align:center;margin-top:20px;font-size:12px;color:var(--muted);">
-      Are you a fleet owner? <button onclick="window.location.hash=''" style="background:transparent;border:none;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;" onclick="location.reload()">Owner Login →</button>
-    </div>`;
-}
-
-async function rpSubmitPhone() {
-  const phone = document.getElementById('rp-phone')?.value?.trim().replace(/\D/g,'');
-  if (phone.length < 10) { showToast('Enter a valid phone number', 'error'); return; }
-  rpState.phone = phone;
-
-  // Look up renter by phone across all active renters
-  // Use anon key — renter data needs to be accessible without auth
-  try {
-    const r = await fetch(`${SB_URL}/rest/v1/renters?phone=like.*${phone.slice(-10)}*&active=eq.true&order=created_at.desc&limit=1`, {
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/json' }
-    });
-    const rows = await r.json();
-    if (!rows.length) {
-      showToast('No active rental found for that number', 'error');
-      return;
-    }
-    rpState.renter = rows[0];
-    renderRPPinEntry(false);
-  } catch(e) {
-    showToast('Could not look up account. Try again.', 'error');
-  }
-}
-
-function renderRPPinEntry(wrongPin = false) {
-  rpState.pin = '';
-  const el = document.getElementById('rp-main');
-  el.innerHTML = `
-    <div style="text-align:center;padding:28px 0 20px;">
-      <div style="font-size:14px;font-weight:700;margin-bottom:4px;">Welcome, ${esc(rpState.renter?.name?.split(' ')[0] || 'Renter')}</div>
-      <div style="font-size:13px;color:var(--muted);">Enter your 4-digit PIN</div>
-      ${wrongPin ? '<div style="font-size:12px;color:var(--warn);margin-top:8px;">Incorrect PIN — try again</div>' : ''}
-    </div>
-    <div style="display:flex;justify-content:center;gap:14px;margin:20px 0 32px;">
-      <div class="rp-pin-dot" id="dot-0"></div>
-      <div class="rp-pin-dot" id="dot-1"></div>
-      <div class="rp-pin-dot" id="dot-2"></div>
-      <div class="rp-pin-dot" id="dot-3"></div>
-    </div>
-    <div class="rp-keypad">
-      ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k => `
-        <button class="rp-key" onclick="rpKeyPress('${k}')" ${k===''?'style="visibility:hidden"':''}>
-          ${k}
-        </button>`).join('')}
-    </div>
-    <button onclick="renderRPLogin()" style="display:block;margin:24px auto 0;background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;">← Back</button>`;
-}
-
-function rpKeyPress(key) {
-  if (key === '⌫') {
-    rpState.pin = rpState.pin.slice(0, -1);
-  } else if (key !== '' && rpState.pin.length < 4) {
-    rpState.pin += String(key);
-  }
-  // Update dots
-  for (let i = 0; i < 4; i++) {
-    const dot = document.getElementById('dot-' + i);
-    if (dot) dot.classList.toggle('filled', i < rpState.pin.length);
-  }
-  if (rpState.pin.length === 4) {
-    setTimeout(rpVerifyPin, 150);
-  }
-}
-
-async function rpVerifyPin() {
-  // PIN is stored as last 4 digits of phone by default
-  // Owner can set a custom PIN by storing it in the renter record (renter.pin field)
-  const renter = rpState.renter;
-  const expectedPin = renter.pin || rpState.phone.replace(/\D/g,'').slice(-4);
-  if (rpState.pin === expectedPin) {
-    rpState.authed = true;
-    // Load car and payment data
-    await rpLoadData();
-    rpShowDashboard();
-  } else {
-    renderRPPinEntry(true);
-  }
-}
-
-async function rpLoadData() {
-  try {
-    const [carRes, payRes] = await Promise.all([
-      fetch(`${SB_URL}/rest/v1/cars?id=eq.${rpState.renter.car_id}`, {
-        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/json' }
-      }),
-      fetch(`${SB_URL}/rest/v1/payments?car_id=eq.${rpState.renter.car_id}&order=date.asc`, {
-        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/json' }
-      })
-    ]);
-    const cars = await carRes.json();
-    const pays = await payRes.json();
-    rpState.car = cars[0] || null;
-    rpState.payments = pays || [];
-  } catch(e) { console.error('Portal data load:', e); }
-}
-
-function rpShowDashboard() {
-  document.getElementById('rp-nav').style.display = 'flex';
-  document.getElementById('rp-topbar-right').textContent = rpState.renter?.name?.split(' ')[0] || '';
-  rpState.tab = 'home';
-  document.querySelectorAll('.rp-tab').forEach(t => t.classList.toggle('active', t.dataset.rptab === 'home'));
-  renderRPPage();
-}
-
-// ── HOME TAB ──
-function renderRPHome() {
-  const r = rpState.renter;
-  const car = rpState.car;
-  const pays = rpState.payments;
-  const el = document.getElementById('rp-main');
-
-  if (!r) { el.innerHTML = '<div class="empty-state"><div class="empty-title">No active rental found</div></div>'; return; }
-
-  const dl = daysLeft(r.contract_end);
-  const weeklyTotal = +r.weekly_rent + +r.protection_fee;
-  const totalDue = weeklyTotal * 4;
-  const totalPaid = pays.reduce((s, p) => s + +p.amount, 0);
-  const balance = Math.max(0, totalDue - totalPaid);
-  const isOverdue = dl < 0;
-  const contractStart = new Date(r.contract_start + 'T00:00:00');
-  const daysSinceStart = Math.floor((new Date() - contractStart) / 86400000);
-  const currentWeek = Math.min(4, Math.floor(daysSinceStart / 7) + 1);
-  const lastPayment = pays.slice().sort((a,b) => (b.date||'').localeCompare(a.date||''))[0];
-  const pct = Math.min(100, Math.round(totalPaid / totalDue * 100));
-
-  let stripeSection = '';
-  if (balance > 0) {
-    stripeSection = `
-      <div class="stripe-box">
-        <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Make a Payment</div>
-        <div style="font-size:28px;font-weight:900;margin-bottom:4px;font-variant-numeric:tabular-nums;">${$(weeklyTotal)}</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Week ${currentWeek} payment due</div>
-        <button id="rp-stripe-btn" class="stripe-btn" onclick="initiateStripePayment(${currentWeek}, ${weeklyTotal})">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-          Pay Now with Card
-        </button>
-        <div style="font-size:11px;color:var(--muted);margin-top:10px;">Secured by Stripe &middot; Visa, Mastercard, Amex accepted</div>
-      </div>`;
-  } else {
-    stripeSection = `
-      <div class="paid-box">
-        <div style="font-size:32px;margin-bottom:8px;">&#10003;</div>
-        <div style="font-size:14px;font-weight:700;">All paid up!</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:4px;">No balance due</div>
-      </div>`;
-  }
-
-  el.innerHTML = `
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;text-align:center;">
-      <div style="margin-bottom:12px;">
-        <span class="rp-status ${isOverdue ? 'overdue' : 'active'}">${isOverdue ? 'Overdue' : 'Active Rental'}</span>
-      </div>
-      <div style="font-size:28px;font-weight:900;margin-bottom:4px;font-variant-numeric:tabular-nums;">${$(balance)}</div>
-      <div style="font-size:13px;color:var(--muted);">${balance > 0 ? 'balance due' : 'fully paid'}</div>
-    </div>
-
-    ${stripeSection}
-
-    ${car ? `<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Your Vehicle</div>
-      <div style="font-size:17px;font-weight:800;margin-bottom:4px;">${esc(car.year + ' ' + car.make + ' ' + car.model)}</div>
-      <div style="font-size:13px;color:var(--muted);">${esc(car.color)} &middot; ${esc(car.plate)}</div>
-    </div>` : ''}
-
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Contract Summary</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <div style="background:var(--surface);padding:10px 12px;border-radius:8px;">
-          <div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Weekly Rent</div>
-          <div style="font-size:14px;font-weight:700;">${$(r.weekly_rent)}</div>
-        </div>
-        <div style="background:var(--surface);padding:10px 12px;border-radius:8px;">
-          <div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Protection Fee</div>
-          <div style="font-size:14px;font-weight:700;">${$(r.protection_fee)}/wk</div>
-        </div>
-        <div style="background:var(--surface);padding:10px 12px;border-radius:8px;">
-          <div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Contract Ends</div>
-          <div style="font-size:13px;font-weight:700;color:${isOverdue ? 'var(--warn)' : 'var(--text)'};">${fmtDate(r.contract_end)}</div>
-        </div>
-        <div style="background:var(--surface);padding:10px 12px;border-radius:8px;">
-          <div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Deposit Held</div>
-          <div style="font-size:14px;font-weight:700;">${$(r.deposit)}</div>
-        </div>
-      </div>
-    </div>
-
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);">Payment Progress</div>
-        <div style="font-size:12px;color:var(--muted);">${$(totalPaid)} of ${$(totalDue)}</div>
-      </div>
-      <div style="height:8px;background:var(--dim);border-radius:4px;overflow:hidden;margin-bottom:8px;">
-        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--muted));border-radius:4px;"></div>
-      </div>
-      <div style="font-size:11px;color:var(--dim);">${pct}% complete &middot; ${pays.length} of 4 weeks paid</div>
-    </div>
-
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Need Help?</div>
-      <a href="tel:+1" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);background:var(--surface);padding:12px;border-radius:10px;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2.69h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6.06 6.06l1.41-1.41a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-        <div>
-          <div style="font-size:13px;font-weight:600;">Call Fleet Manager</div>
-          <div style="font-size:11px;color:var(--muted);">For emergencies or questions</div>
-        </div>
-      </a>
-    </div>
-
-    <button onclick="rpSignOut()" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--muted);padding:14px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;">Sign Out</button>`;
-}
-
-// ── PAYMENTS TAB ──
-function renderRPPayments() {
-  const r = rpState.renter;
-  const pays = rpState.payments;
-  const el = document.getElementById('rp-main');
-  const weeklyTotal = +r.weekly_rent + +r.protection_fee;
-  const contractStart = new Date(r.contract_start + 'T00:00:00');
-
-  // Build 4-week schedule
-  const weeks = [1,2,3,4].map(wk => {
-    const dueDate = new Date(contractStart);
-    dueDate.setDate(dueDate.getDate() + (wk - 1) * 7);
-    const payment = pays.find(p => +p.week_num === wk);
-    const isPast = new Date() > dueDate;
-    const status = payment ? 'paid' : isPast ? 'overdue' : wk === Math.min(4, Math.floor((new Date()-contractStart)/86400000/7)+1) ? 'due' : 'upcoming';
-    return { wk, dueDate, payment, status };
-  });
-
-  const totalPaid = pays.reduce((s,p) => s + +p.amount, 0);
-  const totalDue = weeklyTotal * 4;
-
-  el.innerHTML = `
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
-      <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;">Total Paid</div><div style="font-size:24px;font-weight:900;font-variant-numeric:tabular-nums;">${$(totalPaid)}</div></div>
-      <div style="text-align:right;"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;">Remaining</div><div style="font-size:24px;font-weight:900;font-variant-numeric:tabular-nums;">${$(Math.max(0,totalDue-totalPaid))}</div></div>
-    </div>
-
-    <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Weekly Schedule</div>
-
-    ${weeks.map(({wk, dueDate, payment, status}) => `
-      <div class="rp-week">
-        <div class="rp-week-num ${status}">${wk}</div>
-        <div style="flex:1;">
-          <div style="font-size:13px;font-weight:700;">Week ${wk} — ${$(weeklyTotal)}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px;">
-            Due ${fmtDate(dueDate.toISOString().slice(0,10))}
-            ${payment ? ' · Paid ' + fmtDate(payment.date) + ' via ' + esc(payment.method) : ''}
-          </div>
-        </div>
-        <div style="font-size:12px;font-weight:700;color:${status==='paid'?'var(--pos)':status==='overdue'?'var(--warn)':status==='due'?'var(--accent)':'var(--muted)'}">
-          ${status==='paid'?'✓ Paid':status==='overdue'?'Overdue':status==='due'?'Due Now':'Upcoming'}
-        </div>
-      </div>`).join('')}
-
-    <div style="margin-top:16px;">
-      <div class="stripe-box" style="margin-bottom:10px;">
-        <button onclick="initiateStripePayment(${currentWeek}, ${weeklyTotal})"
-          class="stripe-btn" style="margin-bottom:10px;">
-          Pay Week ${currentWeek} &mdash; ${$(weeklyTotal)} with Card
-        </button>
-        <div style="font-size:11px;color:var(--muted);">Secured by Stripe</div>
-      </div>
-      <div style="background:var(--surface);border-radius:10px;padding:12px;font-size:12px;color:var(--muted);line-height:1.7;text-align:center;">
-        Or pay via <strong style="color:var(--text);">Zelle &middot; Cash App &middot; Venmo &middot; Cash</strong><br>
-        Contact your fleet manager to record cash payments
-      </div>
-    </div>`;
-}
-
-// ── CONTRACT TAB ──
-function renderRPContract() {
-  const r = rpState.renter;
-  const car = rpState.car;
-  const el = document.getElementById('rp-main');
-
-  const terms = [
-    ['Renter', r.name],
-    ['Phone', r.phone],
-    ['Email', r.email || '—'],
-    ["Driver's License", r.license],
-    ['Platform', r.platform],
-    ['Vehicle', car ? car.year+' '+car.make+' '+car.model : '—'],
-    ['Plate', car ? car.plate : '—'],
-    ['Contract Start', fmtDate(r.contract_start)],
-    ['Contract End', fmtDate(r.contract_end)],
-    ['Weekly Rent', $(r.weekly_rent)],
-    ['Protection Fee', $(r.protection_fee)+'/wk'],
-    ['Weekly Total', $(+r.weekly_rent + +r.protection_fee)],
-    ['Security Deposit', $(r.deposit)],
-    ['Total Contract Value', $(( +r.weekly_rent + +r.protection_fee) * 4)],
-  ];
-
-  el.innerHTML = `
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px;">
-      <div style="padding:16px;border-bottom:1px solid var(--border);">
-        <div style="font-size:16px;font-weight:800;margin-bottom:2px;">Rental Agreement</div>
-        <div style="font-size:12px;color:var(--muted);">GOGO Fleet · Houston, Texas</div>
-      </div>
-      ${terms.map(([k,v]) => `
-        <div style="padding:10px 16px;border-bottom:1px solid var(--dim);display:flex;justify-content:space-between;align-items:center;gap:12px;">
-          <span style="font-size:12px;color:var(--muted);flex-shrink:0;">${k}</span>
-          <span style="font-size:13px;font-weight:600;text-align:right;">${esc(v)}</span>
-        </div>`).join('')}
-    </div>
-
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;">
-      <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Key Terms</div>
-      ${['Weekly payments are due every 7 days from contract start date.',
-         'A $50 late fee applies after 3 days past due date.',
-         'Security deposit is refundable upon return of vehicle in original condition.',
-         'Renter is responsible for all traffic violations and parking tickets.',
-         'Vehicle must be used for approved delivery platforms only.',
-         'Fleet manager must be notified immediately of any accident or damage.',
-         'Contract auto-expires on end date unless renewed in writing.']
-        .map(t => `<div style="font-size:12px;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--dim);line-height:1.5;">· ${t}</div>`).join('')}
-    </div>`;
-}
-
-// ── DOCUMENTS TAB ──
-function renderRPDocs() {
-  const r = rpState.renter;
-  const el = document.getElementById('rp-main');
-
-  el.innerHTML = `
-    <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;">Required Documents</div>
-
-    <!-- Driver License -->
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div>
-          <div style="font-size:14px;font-weight:700;">Driver's License</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${esc(r.license)}</div>
-        </div>
-        <div id="license-status" style="font-size:11px;color:var(--muted);">Checking…</div>
-      </div>
-      <div class="rp-upload" id="license-upload-zone">
-        <input type="file" accept="image/*" onchange="rpUploadDoc(event,'license')">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
-        <div style="font-size:13px;font-weight:600;margin-top:8px;">Upload License Photo</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Front and back if possible</div>
-      </div>
-      <div id="license-preview"></div>
-    </div>
-
-    <!-- Insurance Card -->
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div>
-          <div style="font-size:14px;font-weight:700;">Insurance Card</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px;">Current proof of insurance</div>
-        </div>
-        <div id="insurance-status" style="font-size:11px;color:var(--muted);">Checking…</div>
-      </div>
-      <div class="rp-upload" id="insurance-upload-zone">
-        <input type="file" accept="image/*" onchange="rpUploadDoc(event,'insurance')">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
-        <div style="font-size:13px;font-weight:600;margin-top:8px;">Upload Insurance Card</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;">JPG or PNG, max 10MB</div>
-      </div>
-      <div id="insurance-preview"></div>
-    </div>
-
-    <div style="background:var(--surface);border-radius:10px;padding:14px;font-size:12px;color:var(--muted);line-height:1.6;text-align:center;">
-      Documents are stored securely and only visible to your fleet manager.
-    </div>`;
-
-  // Check existing docs
-  rpCheckExistingDocs();
-}
-
-async function rpCheckExistingDocs() {
-  const renterId = rpState.renter?.id;
-  if (!renterId) return;
-
-  for (const docType of ['license','insurance']) {
-    try {
-      const r = await fetch(`${SB_URL}/storage/v1/object/list/vehicle-photos`, {
-        method: 'POST',
-        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prefix: `renter-docs/${renterId}/${docType}/`, limit: 5 })
-      });
-      const files = await r.json();
-      const statusEl = document.getElementById(docType + '-status');
-      const previewEl = document.getElementById(docType + '-preview');
-      if (files && files.length) {
-        if (statusEl) statusEl.innerHTML = '<span style="color:var(--pos);">✓ Uploaded</span>';
-        if (previewEl) {
-          const url = `${SB_URL}/storage/v1/object/public/vehicle-photos/renter-docs/${renterId}/${docType}/${files[0].name}`;
-          previewEl.innerHTML = `<div class="rp-doc-preview"><img src="${url}" style="width:60px;height:40px;object-fit:cover;border-radius:6px;" onerror="this.parentElement.innerHTML='<span style=font-size:12px;color:var(--muted)>File uploaded</span>'"><div style="font-size:12px;color:var(--pos);">Document on file</div></div>`;
-        }
-      } else {
-        if (statusEl) statusEl.innerHTML = '<span style="color:var(--warn);">Not uploaded</span>';
-      }
-    } catch(e) {
-      const statusEl = document.getElementById(docType + '-status');
-      if (statusEl) statusEl.textContent = '—';
-    }
-  }
-}
-
-async function rpUploadDoc(event, docType) {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  if (file.size > 10 * 1024 * 1024) { showToast('File too large (max 10MB)', 'error'); return; }
-
-  const renterId = rpState.renter?.id;
-  const ext = file.name.split('.').pop() || 'jpg';
-  const path = `renter-docs/${renterId}/${docType}/${Date.now()}.${ext}`;
-
-  const zone = document.getElementById(docType + '-upload-zone');
-  if (zone) zone.innerHTML = '<div style="padding:12px;text-align:center;font-size:13px;font-weight:600;">Uploading…</div>';
-
-  try {
-    const r = await fetch(`${SB_URL}/storage/v1/object/vehicle-photos/${path}`, {
-      method: 'POST',
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': file.type || 'image/jpeg', 'x-upsert': 'true' },
-      body: file
-    });
-    if (!r.ok) throw new Error('Upload failed');
-    showToast(docType === 'license' ? 'License uploaded ✓' : 'Insurance card uploaded ✓');
-    renderRPDocs();
-  } catch(e) {
-    showToast('Upload failed. Try again.', 'error');
-    renderRPDocs();
-  }
-}
-
-function rpSignOut() {
-  rpState = { renter: null, car: null, payments: [], pin: '', phone: '', tab: 'home', authed: false };
-  document.getElementById('rp-nav').style.display = 'none';
-  renderRPLogin();
-}
-
-// This file will be injected into the app before the SERVICE WORKER block
-
-/* ═══════════════════════════════════════
-   STRIPE PAYMENTS
-═══════════════════════════════════════ */
-
-async function initiateStripePayment(weekNum, amount) {
-  const r = rpState.renter;
-  if (!r) return;
-  const btn = document.getElementById('rp-stripe-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
-  try {
-    const portalUrl = window.location.origin + window.location.pathname + '/renter';
-    const res = await fetch(FUNCTIONS_URL + '/create-checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_KEY },
-      body: JSON.stringify({
-        renter_id: r.id,
-        car_id: r.car_id,
-        renter_name: r.name,
-        amount: amount,
-        week_num: weekNum,
-        success_url: portalUrl,
-        cancel_url: portalUrl
-      })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    window.location.href = data.url;
-  } catch(e) {
-    showToast('Payment error: ' + e.message, 'error');
-    if (btn) { btn.disabled = false; btn.textContent = 'Pay Now'; }
-  }
-}
-
-function checkStripeReturn() {
-  const params = new URLSearchParams(window.location.search);
-  const status = params.get('payment');
-  if (!status) return;
-  window.history.replaceState({}, '', window.location.pathname + '/renter');
-  if (status === 'success') {
-    setTimeout(async () => {
-      showToast('Payment successful! ✓');
-      if (rpState.authed && rpState.renter) {
-        await rpLoadData();
-        renderRPPage();
-      }
-    }, 600);
-  } else if (status === 'cancelled') {
-    setTimeout(() => showToast('Payment cancelled', 'error'), 600);
-  }
-}
-
-
 
 /* ═══════════════════════════════════════
    CONTRACT VIEWER (OWNER SIDE)
 ═══════════════════════════════════════ */
+
+// Renter documents and signed contracts live in the PRIVATE 'renter-private' bucket.
+// Owners and their team read them through short-lived signed URLs authorised by their own login.
+async function ownerSignedUrl(path, seconds = 600) {
+  const token = currentSession?.access_token;
+  if (!token) return null;
+  try {
+    const r = await fetch(`${SB_URL}/storage/v1/object/sign/renter-private/${encodeURI(path)}`, {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expiresIn: seconds })
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d.signedURL ? `${SB_URL}/storage/v1${d.signedURL}` : null;
+  } catch (e) { return null; }
+}
+
 async function viewSignedContract(renterId, contractStart) {
   const metaPath = `contracts/${renterId}/signed.json`;
   const sigPath = `contracts/${renterId}/signature_${contractStart}.png`;
-  const sigUrl = SB_URL + '/storage/v1/object/public/vehicle-photos/' + sigPath;
-  const metaUrl = SB_URL + '/storage/v1/object/public/vehicle-photos/' + metaPath;
 
   try {
-    const r = await fetch(metaUrl, {
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + (currentSession?.access_token || SB_KEY) }
-    });
+    const [metaUrl, sigUrl] = await Promise.all([ownerSignedUrl(metaPath), ownerSignedUrl(sigPath)]);
+    if (!metaUrl) { showToast('No signed contract found', 'error'); return; }
+    const r = await fetch(metaUrl);
     if (!r.ok) { showToast('No signed contract found', 'error'); return; }
     const meta = await r.json();
 
@@ -3624,7 +3057,7 @@ async function loadRenterDocs(renterId) {
 
   for (const doc of docTypes) {
     try {
-      const r = await fetch(`${SB_URL}/storage/v1/object/list/vehicle-photos`, {
+      const r = await fetch(`${SB_URL}/storage/v1/object/list/renter-private`, {
         method: 'POST',
         headers: {
           'apikey': SB_KEY,
@@ -3633,7 +3066,9 @@ async function loadRenterDocs(renterId) {
         },
         body: JSON.stringify({ prefix: `renter-docs/${renterId}/${doc.key}/`, limit: 5 })
       });
-      const files = await r.json();
+      const listed = await r.json();
+      const files = Array.isArray(listed) ? listed.filter(f => f.name && f.id) : [];
+      const signedUrls = await Promise.all(files.map(f => ownerSignedUrl(`renter-docs/${renterId}/${doc.key}/${f.name}`)));
 
       html += `<div style="margin-bottom:14px;">
         <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">${doc.label}</div>`;
@@ -3641,7 +3076,7 @@ async function loadRenterDocs(renterId) {
       if (files && files.length) {
         html += `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">`;
         files.forEach((f, i) => {
-          const url = `${SB_URL}/storage/v1/object/public/vehicle-photos/renter-docs/${renterId}/${doc.key}/${f.name}`;
+          const url = signedUrls[i] || '';
           html += `<div style="aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:var(--surface);border:1px solid var(--border);cursor:pointer;" onclick="openLightbox('${url}','${doc.label} ${i+1}')">
             <img src="${url}" style="width:100%;height:100%;object-fit:cover;" alt="${doc.label}" loading="lazy" onerror="this.parentElement.style.display='none'">
           </div>`;
@@ -3689,7 +3124,7 @@ async function sendOnboardingSMS(renter, car) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + SB_KEY,
+        'Authorization': 'Bearer ' + (currentSession?.access_token || SB_KEY),
       },
       body: JSON.stringify({ to: renter.phone, message }),
     });
@@ -4118,7 +3553,7 @@ function sendLocalNotification(title, body, url) {
         body,
         icon: '/icon-192.png',
         badge: '/icon-192.png',
-        data: { url: url || '/app' },
+        data: { url: url || '/app.html' },
         vibrate: [100, 50, 100],
       });
     });
@@ -4220,7 +3655,7 @@ async function sendSMSDirect(phone, message) {
   try {
     await fetch(FUNCTIONS_URL + '/send-sms', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_KEY },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (currentSession?.access_token || SB_KEY) },
       body: JSON.stringify({ to: phone, message })
     });
   } catch(e) { console.warn('SMS failed:', e); }
@@ -4808,6 +4243,11 @@ window.addEventListener('load', () => {
     restoreSession();
   }
 });
+
+// Register the service worker (offline shell + notifications).
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+}
 </script>
 
 <!-- TERMS OF SERVICE GATE -->
