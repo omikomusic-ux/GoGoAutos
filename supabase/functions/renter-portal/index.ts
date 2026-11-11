@@ -50,9 +50,19 @@ function safeRenter(row: Record<string, unknown>) {
 async function loadPortalData(renter: Record<string, any>) {
   const { data: car } = await sb
     .from("cars")
-    .select("id, make, model, year, color, plate")
+    .select("id, make, model, year, color, plate, owner_id")
     .eq("id", renter.car_id)
     .maybeSingle();
+
+  // Operator identity (shown on the portal + contract) and whether online payment is available.
+  let operator = { name: "Your rental company", phone: "" };
+  let payEnabled = false;
+  if (car?.owner_id) {
+    const { data: prof } = await sb.from("team_members").select("biz_name, contact_phone").eq("owner_id", car.owner_id).eq("role", "owner").maybeSingle();
+    if (prof?.biz_name) operator = { name: String(prof.biz_name), phone: String(prof.contact_phone ?? "") };
+    const { data: ob } = await sb.from("owner_billing").select("stripe_account_id, payouts_enabled").eq("owner_id", car.owner_id).maybeSingle();
+    payEnabled = !!(ob?.stripe_account_id && ob.payouts_enabled);
+  }
 
   let q = sb.from("payments").select("*").eq("car_id", renter.car_id);
   // Only this contract's payments: a car may have had earlier renters.
@@ -61,7 +71,9 @@ async function loadPortalData(renter: Record<string, any>) {
 
   return {
     renter: safeRenter(renter),
-    car: car ?? null,
+    car: car ? (({ owner_id: _o, ...c }) => c)(car) : null,
+    operator,
+    pay_enabled: payEnabled,
     payments: (payments ?? []).map((p: Record<string, unknown>) => {
       // deno-lint-ignore no-unused-vars
       const { owner_id, ...rest } = p;
@@ -254,6 +266,7 @@ Deno.serve(async (req) => {
         contract_end: renter.contract_end,
         signed_at: new Date().toISOString(),
         signed_by: renter.name,
+        operator_name: (await loadPortalData(renter)).operator.name,
         weekly_rent: renter.weekly_rent,
         protection_fee: renter.protection_fee,
         deposit: renter.deposit,

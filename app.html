@@ -930,7 +930,8 @@ function bootApp() {
   initTheme();
   // Ensure we have a valid access token before loading data
   ensureValidToken().then(() => {
-    loadData().then(() => {
+    loadData().then(async () => {
+      if (isOwner()) await handleBillingReturn();
       render();
       updateTrackingNavVisibility();
       setInterval(silentRefresh, 20000);
@@ -1075,6 +1076,7 @@ async function render() {
   else if (currentPage === 'reports') { setTopbar('Reports'); el.innerHTML = renderReports(); }
   else if (currentPage === 'inquiries') { setTopbar('Leads'); el.innerHTML = await renderInquiries(); }
   updateAlertBadge();
+  if (isOwner()) { if (currentPage === 'dashboard') renderOnboarding(); if (currentPage === 'team') renderBillingCard(); }
 }
 
 /* ═══════════════════════════════════════
@@ -1159,19 +1161,7 @@ function renderDashboard() {
       <div class="kpi"><div class="kpi-label">Fleet Utilization</div><div class="kpi-value" style="color:var(--orange)">${util}%</div><div class="kpi-sub">${rented.length}/${cars.length} cars</div></div>
       <div class="kpi"><div class="kpi-label">All-Time Revenue</div><div class="kpi-value" style="color:var(--gold)">${$(totalRev)}</div><div class="kpi-sub">total collected</div></div>
     </div>
-    <div id="payment-method-banner" class="payment-banner" style="display:none;">
-      <div class="payment-banner-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-      </div>
-      <div class="payment-banner-body">
-        <div class="payment-banner-title">No payment method on file</div>
-        <div class="payment-banner-sub">A card is required to use GOGO Fleet. This notice will appear on every login until fulfilled or your account is deactivated.</div>
-      </div>
-      <div style="display:flex;gap:8px;flex-shrink:0;">
-        <button class="payment-banner-btn" onclick="openAddCardSheet()">Add Card</button>
-
-      </div>
-    </div>
+    <div id="onboarding-card"></div>
 
     <div id="push-banner" class="push-banner" style="display:none;">
       <div class="push-banner-icon">
@@ -1378,6 +1368,8 @@ function renderTeam() {
   const others = state.team.filter(t => t.user_id !== currentUser?.id && t.owner_id === myOwnerId);
 
   return `
+    ${isOwner() ? `<div class="section-title">Plan &amp; Billing</div>
+    <div id="billing-card" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:16px;"></div>` : ''}
     ${isOwner() ? `
     <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:16px;">
       <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;">Add Team Member</div>
@@ -1444,13 +1436,9 @@ async function removeEmployee(teamId, name, userId) {
   if (!confirm('Remove ' + name + '? They will no longer be able to log in.')) return;
   try {
     await dbDelete('team_members', teamId);
-    // Delete auth user via admin endpoint if possible
-    if (userId) {
-      await fetch(SB_URL + '/auth/v1/admin/users/' + userId, { method: 'DELETE', headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY } });
-    }
     showToast(name + ' removed');
     await silentRefresh(); render();
-  } catch(e) { showToast('Removed from team (auth account may still exist)', 'error'); await silentRefresh(); render(); }
+  } catch(e) { showToast('Could not remove — try again', 'error'); await silentRefresh(); render(); }
 }
 
 /* ═══════════════════════════════════════
@@ -1598,7 +1586,7 @@ async function submitAddCar() {
     showToast('Vehicle added!');
     hideSyncBar();
     render();
-  }catch(e){showToast('Save failed: '+e.message,'error');}
+  }catch(e){const fe=friendlyDbError(e);if(fe){closeSheet();showToast(fe,'error');navigate('team');}else showToast('Save failed: '+e.message,'error');}
 }
 async function submitEditCar(carId) {
   const idx=state.cars.findIndex(c=>c.id===carId);if(idx<0)return;
@@ -1610,10 +1598,10 @@ async function submitAssignRenter(carId) {
   const consentCb = document.getElementById('sms-consent-cb');
   const smsConsent = consentCb ? consentCb.checked : false;
   if(!smsConsent){showToast('Please confirm SMS consent to continue','error');return;}
-  try{showSync('Saving…');const existing=state.renters.filter(r=>r.car_id===carId&&r.active);for(const r of existing)await dbUpdate('renters',r.id,{active:false});const renter=await dbInsert('renters',{car_id:carId,name,phone,email:val('r-email'),license,platform:val('r-platform')||'DoorDash',contract_start:val('c-start')||today(),contract_end:val('c-end')||addDays(today(),28),weekly_rent:numVal('c-rent')||400,protection_fee:numVal('c-pfee')||126,deposit:numVal('c-deposit')||600,active:true,owner_id:ownerIdForData(),sms_consent:true,sms_consent_at:new Date().toISOString(),sms_opted_out:false});await dbUpdate('cars',carId,{status:'rented'});state.renters=state.renters.filter(r=>!(r.car_id===carId&&r.active));state.renters.push(renter);const cidx=state.cars.findIndex(c=>c.id===carId);if(cidx>=0)state.cars[cidx].status='rented';closeSheet();showToast('Contract started!');hideSyncBar();
+  try{showSync('Saving…');const existing=state.renters.filter(r=>r.car_id===carId&&r.active);for(const r of existing)await dbUpdate('renters',r.id,{active:false});const renter=await dbInsert('renters',{pin:String(1000+crypto.getRandomValues(new Uint32Array(1))[0]%9000),car_id:carId,name,phone,email:val('r-email'),license,platform:val('r-platform')||'DoorDash',contract_start:val('c-start')||today(),contract_end:val('c-end')||addDays(today(),28),weekly_rent:numVal('c-rent')||400,protection_fee:numVal('c-pfee')||126,deposit:numVal('c-deposit')||600,active:true,owner_id:ownerIdForData(),sms_consent:true,sms_consent_at:new Date().toISOString(),sms_opted_out:false});await dbUpdate('cars',carId,{status:'rented'});state.renters=state.renters.filter(r=>!(r.car_id===carId&&r.active));state.renters.push(renter);const cidx=state.cars.findIndex(c=>c.id===carId);if(cidx>=0)state.cars[cidx].status='rented';closeSheet();showToast('Contract started!');hideSyncBar();
     // Show portal link info
     setTimeout(() => {
-      const portalUrl = window.location.origin + window.location.pathname + '/renter';
+      const portalUrl = window.location.origin + '/renter.html';
       showToast('Share portal link with renter: ' + portalUrl);
     }, 3000);
     navigate('car',carId);}catch(e){showToast('Save failed: '+e.message,'error');}
@@ -2240,85 +2228,6 @@ function exportReportPDF() {
     ${tableHTML}
     <div class="footer"><span>Generated ${new Date().toLocaleString()}</span><span>GOGO Fleet Manager</span></div>
   
-<!-- PHOTO LIGHTBOX -->
-<div id="photo-lightbox" onclick="if(event.target===this)closeLightbox()">
-  <button id="photo-lightbox-close" onclick="closeLightbox()">✕</button>
-  <img id="photo-lightbox-img" src="" alt="">
-  <div id="photo-lightbox-caption"></div>
-</div>
-
-<!-- TERMS OF SERVICE GATE -->
-<div id="tos-gate">
-  <div class="tos-header">
-    <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Before you continue</div>
-    <div style="font-size:18px;font-weight:900;">Terms of Service</div>
-    <div style="font-size:12px;color:var(--muted);margin-top:4px;">Please read and accept to use GOGO Fleet</div>
-  </div>
-  <div class="tos-scroll" id="tos-scroll">
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px;">
-      <div style="font-size:13px;font-weight:800;margin-bottom:12px;">Summary of Key Points</div>
-      <div class="tos-clause">You are responsible for maintaining proper licensing and insurance for all vehicles.</div>
-      <div class="tos-clause">GOGO Fleet is a software tool — all rental agreements are between you and your renters.</div>
-      <div class="tos-clause">You must obtain renter consent before sending SMS communications.</div>
-      <div class="tos-clause">A valid payment method is required to maintain your account.</div>
-      <div class="tos-clause">You may not use the platform for unlawful purposes.</div>
-      <div class="tos-clause">We may suspend accounts for Terms violations or non-payment.</div>
-      <div class="tos-clause">Governing law: State of Texas, Harris County.</div>
-    </div>
-    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px;">
-      By accepting, you agree to the full <a href="https://gogofleet.app/terms.html" target="_blank" style="color:var(--accent);">Terms of Service</a> and <a href="https://gogofleet.app/privacy.html" target="_blank" style="color:var(--accent);">Privacy Policy</a>.
-    </div>
-    <div style="height:20px;"></div>
-  </div>
-  <div class="tos-footer">
-    <label style="display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;cursor:pointer;">
-      <input type="checkbox" id="tos-checkbox" onchange="updateTosBtn()" style="width:18px;height:18px;margin-top:2px;accent-color:var(--accent);flex-shrink:0;">
-      <span style="font-size:13px;color:var(--muted);line-height:1.5;">I have read and agree to the Terms of Service and Privacy Policy</span>
-    </label>
-    <button id="tos-accept-btn" onclick="acceptTos()" disabled
-      style="width:100%;background:var(--accent);color:var(--bg);border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;opacity:.4;">
-      Accept &amp; Continue →
-    </button>
-    <button onclick="signOut()" style="width:100%;background:transparent;border:none;color:var(--muted);padding:12px;font-size:13px;cursor:pointer;margin-top:6px;">
-      Decline &amp; Sign Out
-    </button>
-  </div>
-</div>
-
-
-<!-- TERMS OF SERVICE SCREEN -->
-<div id="tos-screen">
-  <div class="tos-header">
-    <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Before you continue</div>
-    <div style="font-size:18px;font-weight:900;">Terms of Service</div>
-    <div style="font-size:12px;color:var(--muted);margin-top:4px;">Please read and accept to use GOGO Fleet</div>
-  </div>
-  <div class="tos-scroll" id="tos-scroll">
-    <div class="tos-clause"><strong>1. Fleet Owner Responsibility</strong> — You are solely responsible for all aspects of your vehicle rental business including compliance with local laws, insurance, licensing, and all agreements with your renters.</div>
-    <div class="tos-clause"><strong>2. Payment Method Required</strong> — A valid payment method must be on file at all times. Failure to maintain one may result in account suspension when billing begins.</div>
-    <div class="tos-clause"><strong>3. SMS Communications</strong> — You must obtain explicit consent from renters before sending SMS messages and comply with TCPA regulations and A2P 10DLC requirements. You are solely liable for any violations.</div>
-    <div class="tos-clause"><strong>4. Renter Data</strong> — You may only use renter personal data for legitimate rental business purposes. You may not sell, share, or misuse renter information.</div>
-    <div class="tos-clause"><strong>5. Payment Processing</strong> — Payments are processed by Stripe. You are responsible for all chargebacks, disputes, and refunds with your renters. GOGO Fleet is not a party to rental transactions.</div>
-    <div class="tos-clause"><strong>6. Marketplace Listings</strong> — By listing vehicles publicly you confirm you have legal authority to rent them and that all information is accurate.</div>
-    <div class="tos-clause"><strong>7. Prohibited Uses</strong> — You may not use GOGO Fleet for illegal rentals, harassment, spam, fraud, or any activity that violates applicable law.</div>
-    <div class="tos-clause"><strong>8. Limitation of Liability</strong> — GOGO Fleet is provided "as is." We are not liable for indirect, incidental, or consequential damages arising from your use of the Service.</div>
-    <div class="tos-clause"><strong>9. Indemnification</strong> — You agree to indemnify GOGO Fleet from any claims arising from your rental operations, use of the Service, or violation of these Terms.</div>
-    <div class="tos-clause"><strong>10. Governing Law</strong> — These Terms are governed by the laws of the State of Texas, Harris County.</div>
-    <div style="margin-top:16px;font-size:12px;color:var(--muted);text-align:center;">
-      <a href="https://gogofleet.app/terms.html" target="_blank" style="color:var(--muted);">Read full Terms of Service →</a>
-    </div>
-  </div>
-  <div class="tos-footer">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;" onclick="document.getElementById('tos-cb').click()">
-      <input type="checkbox" id="tos-cb" onchange="updateTosBtn()" style="width:18px;height:18px;accent-color:var(--accent);flex-shrink:0;">
-      <span style="font-size:13px;color:var(--muted);line-height:1.5;">I have read and agree to the <strong style="color:var(--text);">Terms of Service</strong> and <a href="https://gogofleet.app/privacy.html" target="_blank" style="color:var(--text);">Privacy Policy</a></span>
-    </div>
-    <button id="tos-accept-btn" onclick="acceptTos()" disabled style="width:100%;background:var(--accent);color:var(--bg);border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;opacity:.4;">
-      Accept &amp; Continue →
-    </button>
-  </div>
-</div>
-
 </body></html>`);
   printWindow.document.close();
   printWindow.focus();
@@ -3107,16 +3016,16 @@ async function sendOnboardingSMS(renter, car) {
       console.log('SMS skipped — no consent or opted out:', renter.name);
       return false;
     }
-    const pin = renter.phone.replace(/\D/g,'').slice(-4);
+    const pin = renter.pin || renter.phone.replace(/\D/g,'').slice(-4);
     const firstName = renter.name.split(' ')[0];
     const vehicle = car ? car.year + ' ' + car.make + ' ' + car.model : 'your vehicle';
     const weeklyTotal = +renter.weekly_rent + +renter.protection_fee;
 
     const message =
-      'Hi ' + firstName + '! Your GOGO Fleet rental is confirmed. ' +
+      'Hi ' + firstName + '! Your rental with ' + ((myProfile && myProfile.biz_name) || 'your operator') + ' is confirmed. ' +
       'Vehicle: ' + vehicle + '. ' +
       'Weekly payment: $' + weeklyTotal + ' (due every 7 days). ' +
-      'Access your portal at gogofleet.app/renter — your PIN is ' + pin + '. ' +
+      'Access your portal at gogofleet.app/renter.html — your PIN is ' + pin + '. ' +
       'Questions? Call or text this number. ' +
       'Reply STOP to opt out.';
 
@@ -3673,131 +3582,118 @@ function replyToInquiry(phone, name) {
 /* ═══════════════════════════════════════
    PAYMENT METHOD CHECK
 ═══════════════════════════════════════ */
-async function checkPaymentMethodOnFile() {
-  if (!isOwner()) return;
-  // Check if owner has stripe_payment_method stored in their user metadata
-  const hasPm = currentUser?.user_metadata?.stripe_payment_method;
-  const banner = document.getElementById('payment-method-banner');
-  if (banner) {
-    // Show every login until card is on file — no dismiss option
-    banner.style.display = hasPm ? 'none' : 'flex';
-  }
+let billing = null;
+
+async function ownerBilling(action, extra = {}) {
+  const r = await fetch(FUNCTIONS_URL + '/owner-billing', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + (currentSession?.access_token || '') },
+    body: JSON.stringify({ action, ...extra })
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || 'Request failed');
+  return d;
 }
 
-function dismissPaymentBanner() {
-  // No-op — banner cannot be dismissed until card is added
-  // This prevents bypassing the requirement
+async function loadBilling() {
+  try {
+    billing = await ownerBilling('status');
+    if (billing.has_connect_account && !billing.payouts_enabled) {
+      const c = await ownerBilling('connect-status');
+      billing.payouts_enabled = !!c.payouts_enabled;
+    }
+  } catch (e) { console.warn('Billing status unavailable:', e.message); }
+  return billing;
 }
 
-function addPaymentMethod() {
-  // Open Stripe billing portal or redirect to add card flow
-  openSheet('add-payment-method');
+async function handleBillingReturn() {
+  const q = new URLSearchParams(location.search);
+  await loadBilling();
+  if (q.get('billing') === 'success') showToast('Subscription started. Thank you!');
+  if (q.get('billing') === 'cancelled') showToast('Checkout cancelled');
+  if (q.get('connect') === 'return') showToast(billing?.payouts_enabled ? 'Payouts are set up ✓' : 'Payout setup not finished yet — finish it to accept card payments');
+  if (q.get('billing') || q.get('connect')) history.replaceState(null, '', location.pathname);
 }
 
+function friendlyDbError(e) {
+  const m = String(e && e.message || e);
+  const hit = m.match(/(PLAN_LIMIT|SUBSCRIPTION_REQUIRED):\s*([^"\\]+)/);
+  return hit ? hit[2].trim() : null;
+}
 
-function openAddCardSheet() {
-  document.getElementById('sheet-container').innerHTML = `
-    <div class="sheet-overlay" id="sheet-overlay" onclick="if(event.target.id==='sheet-overlay')closeSheet()">
-      <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div class="sheet-header">
-          <div class="sheet-title">Add Payment Method</div>
-          <button class="sheet-close" onclick="closeSheet()">✕</button>
-        </div>
-        <div class="sheet-body">
-          <div style="text-align:center;padding:16px 0;">
-            <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:20px;">
-              Add a credit or debit card to keep your GOGO Fleet account active.<br>
-              <strong style="color:var(--text);">You won't be charged until billing starts.</strong>
-            </div>
-            <a href="https://gogofleet.app/signup.html" style="display:inline-block;background:var(--accent);color:var(--bg);padding:12px 24px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;margin-bottom:12px;">
-              Update Payment Method →
-            </a>
-            <div style="font-size:11px;color:var(--muted);margin-top:8px;">Secured by Stripe</div>
-          </div>
-        </div>
-      </div>
+function goTo(url) { window.location.href = url; }
+
+async function billingAction(action, extra, btn) {
+  const old = btn && btn.textContent;
+  if (btn) { btn.disabled = true; btn.textContent = 'One moment…'; }
+  try { const d = await ownerBilling(action, extra); if (d.url) goTo(d.url); }
+  catch (e) { showToast(e.message, 'error'); if (btn) { btn.disabled = false; btn.textContent = old; } }
+}
+
+const PLAN_INFO = [
+  { key: 'starter', name: 'Starter', price: 49, cars: 'Up to 5 vehicles' },
+  { key: 'growth',  name: 'Growth',  price: 99, cars: 'Up to 15 vehicles' },
+  { key: 'scale',   name: 'Scale',   price: 199, cars: 'Unlimited vehicles' },
+];
+
+function statusLine(b) {
+  if (b.status === 'comped') return { t: 'Complimentary account', c: 'var(--green,#4ade80)' };
+  if (b.status === 'active') return { t: b.cancel_at_period_end ? 'Active — cancels at period end' : 'Active', c: 'var(--green,#4ade80)' };
+  if (b.status === 'trialing') return { t: b.trial_days_left > 0 ? b.trial_days_left + ' day' + (b.trial_days_left === 1 ? '' : 's') + ' left in your free trial' : 'Trial ended', c: b.trial_days_left > 0 ? 'var(--gold)' : 'var(--red,#f87171)' };
+  if (b.status === 'past_due') return { t: 'Payment failed — update your card', c: 'var(--red,#f87171)' };
+  return { t: 'No active subscription', c: 'var(--red,#f87171)' };
+}
+
+function renderBillingCard() {
+  const el = document.getElementById('billing-card');
+  if (!el) return;
+  if (!billing) { el.innerHTML = '<div style="font-size:12px;color:var(--muted);">Loading billing…</div>'; loadBilling().then(renderBillingCard); return; }
+  const b = billing, st = statusLine(b);
+  const limit = b.cars_limit == null ? '∞' : b.cars_limit;
+  const canPick = b.status !== 'comped';
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <div style="font-size:15px;font-weight:800;">${esc(b.plan_label)} plan</div>
+      <div style="font-size:12px;font-weight:700;color:${st.c};">${st.t}</div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">${b.cars_used} of ${limit} vehicles used${b.current_period_end && b.status === 'active' ? ' · renews ' + new Date(b.current_period_end).toLocaleDateString() : ''}</div>
+    ${canPick && !b.has_subscription ? `<div style="display:grid;gap:8px;">${PLAN_INFO.map(p => `
+      <div style="display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);border-radius:10px;padding:10px 12px;">
+        <div><div style="font-size:13px;font-weight:700;">${p.name} · $${p.price}/mo</div><div style="font-size:11px;color:var(--muted);">${p.cars}</div></div>
+        <button class="payment-banner-btn" onclick="billingAction('checkout',{plan:'${p.key}'},this)">Choose</button>
+      </div>`).join('')}</div>` : ''}
+    ${b.has_subscription ? `<button class="payment-banner-btn" onclick="billingAction('portal',{},this)">Manage billing</button>` : ''}
+    <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px;">Rent payouts</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:10px;">${b.payouts_enabled
+        ? 'Renters can pay by card. Rent is deposited straight to your bank account through Stripe (a card processing fee of about 2.9% + 30¢ applies).'
+        : 'Connect your bank through Stripe so renters can pay by card and the money goes directly to you. Takes about 5 minutes.'}</div>
+      ${b.payouts_enabled
+        ? `<button class="payment-banner-btn" onclick="billingAction('connect-dashboard',{},this)">Open payouts dashboard</button>`
+        : `<button class="payment-banner-btn" onclick="billingAction('connect-onboard',{},this)">${b.has_connect_account ? 'Finish payout setup' : 'Set up payouts'}</button>`}
     </div>`;
 }
 
-
-/* ═══════════════════════════════════════
-   TERMS OF SERVICE GATE
-═══════════════════════════════════════ */
-function checkTosAccepted() {
-  if (!isOwner()) return; // Only owners need to accept ToS
-  const accepted = myProfile?.tos_accepted;
-  if (!accepted) {
-    document.getElementById('tos-gate').classList.add('active');
-  }
-}
-
-function updateTosBtn() {
-  const cb = document.getElementById('tos-checkbox');
-  const btn = document.getElementById('tos-accept-btn');
-  if (btn) {
-    btn.disabled = !cb?.checked;
-    btn.style.opacity = cb?.checked ? '1' : '.4';
-  }
-}
-
-async function acceptTos() {
-  const btn = document.getElementById('tos-accept-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
-  try {
-    await dbUpdate('team_members', myProfile.id, {
-      tos_accepted: true,
-      tos_accepted_at: new Date().toISOString()
-    });
-    myProfile.tos_accepted = true;
-    document.getElementById('tos-gate').classList.remove('active');
-    showToast('Terms accepted. Welcome to GOGO Fleet!');
-  } catch(e) {
-    showToast('Could not save. Try again.', 'error');
-    if (btn) { btn.disabled = false; btn.textContent = 'Accept & Continue →'; btn.style.opacity = '1'; }
-  }
-}
-
-
-/* ═══════════════════════════════════════
-   TERMS OF SERVICE
-═══════════════════════════════════════ */
-function checkTosAccepted() {
-  // Check if this user has already accepted ToS
-  const accepted = localStorage.getItem('gogo-tos-accepted-' + (currentUser?.id || ''));
-  return !!accepted;
-}
-
-function showTosScreen() {
-  document.getElementById('loading-screen').style.display = 'none';
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('tos-screen').classList.add('active');
-}
-
-function updateTosBtn() {
-  const cb = document.getElementById('tos-cb');
-  const btn = document.getElementById('tos-accept-btn');
-  if (btn) {
-    btn.disabled = !cb?.checked;
-    btn.style.opacity = cb?.checked ? '1' : '0.4';
-  }
-}
-
-async function acceptTos() {
-  const cb = document.getElementById('tos-cb');
-  if (!cb?.checked) return;
-  // Store acceptance with timestamp
-  localStorage.setItem('gogo-tos-accepted-' + currentUser.id, new Date().toISOString());
-  // Also store in Supabase for audit trail
-  try {
-    await dbUpdate('team_members', myProfile.id, {
-      tos_accepted: true,
-      tos_accepted_at: new Date().toISOString()
-    });
-  } catch(e) { console.warn('ToS save failed:', e); }
-  document.getElementById('tos-screen').classList.remove('active');
-  bootApp();
+function renderOnboarding() {
+  const el = document.getElementById('onboarding-card');
+  if (!el || !isOwner()) return;
+  if (!billing) { loadBilling().then(renderOnboarding); return; }
+  const b = billing;
+  const steps = [
+    { done: state.cars.length > 0, t: 'Add your first vehicle', go: "openSheet('add-car')", cta: 'Add vehicle' },
+    { done: state.renters.some(r => r.active), t: 'Assign a renter and send their contract', go: "navigate('renters')", cta: 'Go to renters' },
+    { done: !!b.payouts_enabled, t: 'Set up payouts so renters can pay by card', go: "billingAction('connect-onboard',{},this)", cta: b.has_connect_account ? 'Finish setup' : 'Set up' },
+    { done: ['active', 'comped'].includes(b.status), t: b.status === 'trialing' && b.trial_days_left > 0 ? 'Choose a plan (' + b.trial_days_left + ' trial days left)' : 'Choose a plan', go: "navigate('team')", cta: 'See plans' },
+  ];
+  const left = steps.filter(x => !x.done).length;
+  if (!left) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="payment-banner" style="display:block;">
+    <div class="payment-banner-title" style="margin-bottom:8px;">Get started · ${steps.length - left} of ${steps.length} done</div>
+    ${steps.map(x => `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;">
+      <span style="width:18px;text-align:center;color:${x.done ? 'var(--green,#4ade80)' : 'var(--muted)'};">${x.done ? '✓' : '○'}</span>
+      <span style="flex:1;font-size:13px;${x.done ? 'color:var(--muted);text-decoration:line-through;' : ''}">${x.t}</span>
+      ${x.done ? '' : `<button class="payment-banner-btn" onclick="${x.go}">${x.cta}</button>`}
+    </div>`).join('')}</div>`;
 }
 
 
@@ -4249,6 +4145,13 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
 }
 </script>
+
+<!-- PHOTO LIGHTBOX -->
+<div id="photo-lightbox" onclick="if(event.target===this)closeLightbox()">
+  <button id="photo-lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="photo-lightbox-img" src="" alt="">
+  <div id="photo-lightbox-caption"></div>
+</div>
 
 <!-- TERMS OF SERVICE GATE -->
 <div id="tos-screen">
