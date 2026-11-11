@@ -230,7 +230,7 @@ const $ = n => '$' + Number(n||0).toLocaleString('en-US',{minimumFractionDigits:
 async function loadListings() {
   try {
     // Only load cars that are available and listed for rent
-    const r = await fetch(`${SB_URL}/rest/v1/cars?status=eq.available&listed=eq.true&order=created_at.desc`, {
+    const r = await fetch(`${SB_URL}/rest/v1/listed_cars?order=created_at.desc`, {
       headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/json' }
     });
     const data = await r.json();

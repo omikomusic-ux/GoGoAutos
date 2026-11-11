@@ -461,6 +461,7 @@
   .lang-option:active { background:var(--card); }
 
 </style>
+<meta name="robots" content="noindex, nofollow">
 </head>
 <body>
 
@@ -537,7 +538,22 @@ const SB_URL = 'https://pbglpxipzidwhaxganzx.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBiZ2xweGlwemlkd2hheGdhbnp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMDU4NTEsImV4cCI6MjA4OTU4MTg1MX0.kMncp_z2-lzotOho-Yw-8uQI5hkya2SY96ahADQW2Jk';
 const FUNCTIONS_URL = 'https://pbglpxipzidwhaxganzx.supabase.co/functions/v1';
 
-let rpState = { renter:null, car:null, payments:[], pin:'', phone:'', tab:'home', authed:false };
+// All renter data goes through the renter-portal Edge Function. The browser never queries the
+// database or storage directly, and the PIN is verified on the server, not here.
+async function rpApi(action, payload = {}) {
+  const res = await fetch(FUNCTIONS_URL + '/renter-portal', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY },
+    body: JSON.stringify({ action, token: rpState.token, ...payload })
+  });
+  let data = {};
+  try { data = await res.json(); } catch (e) {}
+  if (!res.ok) { const err = new Error(data.error || 'Request failed'); err.status = res.status; throw err; }
+  return data;
+}
+
+
+let rpState = { renter:null, car:null, payments:[], pin:'', phone:'', tab:'home', authed:false, token:null, contractSigned:false, docs:{} };
 let currentTheme = localStorage.getItem('gogofleet-theme') || 'dark';
 let portalLang = localStorage.getItem('gogo-lang') || 'en';
 
@@ -631,23 +647,8 @@ async function rpSubmitPhone() {
   const phone = document.getElementById('rp-phone')?.value?.trim().replace(/\D/g,'');
   if (phone.length < 10) { showToast('Enter a valid phone number', 'error'); return; }
   rpState.phone = phone;
-
-  // Look up renter by phone across all active renters
-  // Use anon key — renter data needs to be accessible without auth
-  try {
-    const r = await fetch(`${SB_URL}/rest/v1/renters?phone=like.*${phone.slice(-10)}*&active=eq.true&order=created_at.desc&limit=1`, {
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/json' }
-    });
-    const rows = await r.json();
-    if (!rows.length) {
-      showToast('No active rental found for that number', 'error');
-      return;
-    }
-    rpState.renter = rows[0];
-    renderRPPinEntry(false);
-  } catch(e) {
-    showToast('Could not look up account. Try again.', 'error');
-  }
+  rpState.renter = null;
+  renderRPPinEntry(false);
 }
 
 function renderRPPinEntry(wrongPin = false) {
@@ -657,7 +658,7 @@ function renderRPPinEntry(wrongPin = false) {
     <div style="text-align:center;padding:28px 0 20px;">
       <div style="font-size:14px;font-weight:700;margin-bottom:4px;">Welcome, ${esc(rpState.renter?.name?.split(' ')[0] || 'Renter')}</div>
       <div style="font-size:13px;color:var(--muted);">Enter your 4-digit PIN</div>
-      ${wrongPin ? '<div style="font-size:12px;color:var(--warn);margin-top:8px;">Incorrect PIN — try again</div>' : ''}
+      ${wrongPin ? '<div style="font-size:12px;color:var(--warn);margin-top:8px;">Incorrect phone number or PIN — try again</div>' : ''}
     </div>
     <div style="display:flex;justify-content:center;gap:14px;margin:20px 0 32px;">
       <div class="rp-pin-dot" id="dot-0"></div>
@@ -691,33 +692,32 @@ function rpKeyPress(key) {
 }
 
 async function rpVerifyPin() {
-  const renter = rpState.renter;
-  const expectedPin = renter.pin || rpState.phone.replace(/\D/g,'').slice(-4);
-  if (rpState.pin === expectedPin) {
+  try {
+    const d = await rpApi('login', { phone: rpState.phone, pin: rpState.pin });
+    rpState.token = d.token;
+    rpState.renter = d.renter;
+    rpState.car = d.car;
+    rpState.payments = d.payments || [];
+    rpState.contractSigned = !!d.contract_signed;
+    rpState.docs = d.docs || {};
     rpState.authed = true;
-    await rpLoadData();
-    // Check if contract needs to be signed first
     await showContractIfNeeded();
-  } else {
+  } catch (e) {
+    if (e.status === 429) { showToast(e.message, 'error'); renderRPLogin(); return; }
     renderRPPinEntry(true);
   }
 }
 
 async function rpLoadData() {
   try {
-    const [carRes, payRes] = await Promise.all([
-      fetch(`${SB_URL}/rest/v1/cars?id=eq.${rpState.renter.car_id}`, {
-        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/json' }
-      }),
-      fetch(`${SB_URL}/rest/v1/payments?car_id=eq.${rpState.renter.car_id}&order=date.asc`, {
-        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/json' }
-      })
-    ]);
-    const cars = await carRes.json();
-    const pays = await payRes.json();
-    rpState.car = cars[0] || null;
-    rpState.payments = pays || [];
-  } catch(e) { console.error('Portal data load:', e); }
+    const d = await rpApi('data');
+    rpState.renter = d.renter;
+    rpState.car = d.car;
+    rpState.payments = d.payments || [];
+  } catch (e) {
+    console.error('Portal data load:', e);
+    if (e.status === 401) { showToast('Session expired. Please sign in again.', 'error'); rpSignOut(); }
+  }
 }
 
 function rpShowDashboard() {
@@ -1002,31 +1002,22 @@ function renderRPDocs() {
 }
 
 async function rpCheckExistingDocs() {
-  const renterId = rpState.renter?.id;
-  if (!renterId) return;
+  if (!rpState.renter?.id) return;
+  let docs = rpState.docs || {};
+  try { docs = (await rpApi('docs')).docs || {}; rpState.docs = docs; } catch (e) { /* fall back to login-time status */ }
 
-  for (const docType of ['license','insurance']) {
-    try {
-      const r = await fetch(`${SB_URL}/storage/v1/object/list/vehicle-photos`, {
-        method: 'POST',
-        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prefix: `renter-docs/${renterId}/${docType}/`, limit: 5 })
-      });
-      const files = await r.json();
-      const statusEl = document.getElementById(docType + '-status');
-      const previewEl = document.getElementById(docType + '-preview');
-      if (files && files.length) {
-        if (statusEl) statusEl.innerHTML = '<span style="color:var(--pos);">✓ Uploaded</span>';
-        if (previewEl) {
-          const url = `${SB_URL}/storage/v1/object/public/vehicle-photos/renter-docs/${renterId}/${docType}/${files[0].name}`;
-          previewEl.innerHTML = `<div class="rp-doc-preview"><img src="${url}" style="width:60px;height:40px;object-fit:cover;border-radius:6px;" onerror="this.parentElement.innerHTML='<span style=font-size:12px;color:var(--muted)>File uploaded</span>'"><div style="font-size:12px;color:var(--pos);">Document on file</div></div>`;
-        }
-      } else {
-        if (statusEl) statusEl.innerHTML = '<span style="color:var(--warn);">Not uploaded</span>';
+  for (const docType of ['license', 'insurance']) {
+    const statusEl = document.getElementById(docType + '-status');
+    const previewEl = document.getElementById(docType + '-preview');
+    const d = docs[docType];
+    if (d && d.uploaded) {
+      if (statusEl) statusEl.innerHTML = '<span style="color:var(--pos);">✓ Uploaded</span>';
+      if (previewEl) {
+        const img = d.url ? `<img src="${d.url}" style="width:60px;height:40px;object-fit:cover;border-radius:6px;" onerror="this.parentElement.innerHTML='<span style=font-size:12px;color:var(--muted)>File uploaded</span>'">` : '';
+        previewEl.innerHTML = `<div class="rp-doc-preview">${img}<div style="font-size:12px;color:var(--pos);">Document on file</div></div>`;
       }
-    } catch(e) {
-      const statusEl = document.getElementById(docType + '-status');
-      if (statusEl) statusEl.textContent = '—';
+    } else if (statusEl) {
+      statusEl.innerHTML = '<span style="color:var(--warn);">Not uploaded</span>';
     }
   }
 }
@@ -1034,32 +1025,29 @@ async function rpCheckExistingDocs() {
 async function rpUploadDoc(event, docType) {
   const file = event.target.files?.[0];
   if (!file) return;
-  if (file.size > 10 * 1024 * 1024) { showToast('File too large (max 10MB)', 'error'); return; }
-
-  const renterId = rpState.renter?.id;
-  const ext = file.name.split('.').pop() || 'jpg';
-  const path = `renter-docs/${renterId}/${docType}/${Date.now()}.${ext}`;
+  if (file.size > 8 * 1024 * 1024) { showToast('File too large (max 8MB)', 'error'); return; }
 
   const zone = document.getElementById(docType + '-upload-zone');
   if (zone) zone.innerHTML = '<div style="padding:12px;text-align:center;font-size:13px;font-weight:600;">Uploading…</div>';
 
   try {
-    const r = await fetch(`${SB_URL}/storage/v1/object/vehicle-photos/${path}`, {
-      method: 'POST',
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': file.type || 'image/jpeg', 'x-upsert': 'true' },
-      body: file
+    const b64 = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result).split(',')[1] || '');
+      fr.onerror = reject;
+      fr.readAsDataURL(file);
     });
-    if (!r.ok) throw new Error('Upload failed');
+    await rpApi('upload-doc', { docType, data: b64 });
     showToast(docType === 'license' ? 'License uploaded ✓' : 'Insurance card uploaded ✓');
     renderRPDocs();
-  } catch(e) {
-    showToast('Upload failed. Try again.', 'error');
+  } catch (e) {
+    showToast(e.message || 'Upload failed. Try again.', 'error');
     renderRPDocs();
   }
 }
 
 function rpSignOut() {
-  rpState = { renter: null, car: null, payments: [], pin: '', phone: '', tab: 'home', authed: false };
+  rpState = { renter: null, car: null, payments: [], pin: '', phone: '', tab: 'home', authed: false, token: null, contractSigned: false, docs: {} };
   document.getElementById('rp-nav').style.display = 'none';
   renderRPLogin();
 }
@@ -1070,19 +1058,11 @@ async function initiateStripePayment(weekNum, amount) {
   const btn = document.getElementById('rp-stripe-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
   try {
-    const portalUrl = window.location.origin + '/renter';
+    // The server computes the amount from your contract. The browser only says which week.
     const res = await fetch(FUNCTIONS_URL + '/create-checkout', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_KEY },
-      body: JSON.stringify({
-        renter_id: r.id,
-        car_id: r.car_id,
-        renter_name: r.name,
-        amount: amount,
-        week_num: weekNum,
-        success_url: portalUrl,
-        cancel_url: portalUrl
-      })
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'x-renter-token': rpState.token || '' },
+      body: JSON.stringify({ week_num: weekNum })
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -1128,7 +1108,7 @@ function showRenterPortal() {
   document.getElementById('app').style.display = 'none';
   document.getElementById('renter-portal').classList.add('active');
   initTheme();
-  rpState = { renter: null, car: null, payments: [], pin: '', phone: '', tab: 'home', authed: false };
+  rpState = { renter: null, car: null, payments: [], pin: '', phone: '', tab: 'home', authed: false, token: null, contractSigned: false, docs: {} };
   checkStripeReturn();
   renderRPLogin();
 }
@@ -1151,18 +1131,7 @@ let sigLastY = 0;
 
 // Check if this renter has already signed their current contract
 async function checkContractSigned(renter) {
-  try {
-    const path = `contracts/${renter.id}/signed.json`;
-    const r = await fetch(`${SB_URL}/storage/v1/object/vehicle-photos/${path}`, {
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
-    });
-    if (!r.ok) return false;
-    const data = await r.json();
-    // Check it matches current contract (by contract_start date)
-    return data.contract_start === renter.contract_start;
-  } catch(e) {
-    return false;
-  }
+  return !!rpState.contractSigned;
 }
 
 async function showContractIfNeeded() {
@@ -1367,51 +1336,11 @@ async function submitSignature() {
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
   try {
-    const r = rpState.renter;
-
-    // Export signature as PNG blob
+    // The server stores the signature and builds the contract record from the database
+    // (never from anything the browser sends), then refuses to overwrite it.
     const sigDataUrl = sigCanvas.toDataURL('image/png');
-    const sigBlob = await (await fetch(sigDataUrl)).blob();
-
-    // Upload signature image
-    const sigPath = `contracts/${r.id}/signature_${r.contract_start}.png`;
-    await fetch(`${SB_URL}/storage/v1/object/vehicle-photos/${sigPath}`, {
-      method: 'POST',
-      headers: {
-        'apikey': SB_KEY,
-        'Authorization': 'Bearer ' + SB_KEY,
-        'Content-Type': 'image/png',
-        'x-upsert': 'true'
-      },
-      body: sigBlob
-    });
-
-    // Save signed contract metadata
-    const metaPath = `contracts/${r.id}/signed.json`;
-    const meta = {
-      renter_id: r.id,
-      renter_name: r.name,
-      car_id: r.car_id,
-      contract_start: r.contract_start,
-      contract_end: r.contract_end,
-      signed_at: new Date().toISOString(),
-      signed_by: r.name,
-      weekly_rent: r.weekly_rent,
-      protection_fee: r.protection_fee,
-      deposit: r.deposit,
-      signature_path: sigPath,
-    };
-
-    await fetch(`${SB_URL}/storage/v1/object/vehicle-photos/${metaPath}`, {
-      method: 'POST',
-      headers: {
-        'apikey': SB_KEY,
-        'Authorization': 'Bearer ' + SB_KEY,
-        'Content-Type': 'application/json',
-        'x-upsert': 'true'
-      },
-      body: JSON.stringify(meta)
-    });
+    await rpApi('sign-contract', { signature: sigDataUrl });
+    rpState.contractSigned = true;
 
     // Hide signature screen and show dashboard
     document.getElementById('signature-screen').classList.remove('active');

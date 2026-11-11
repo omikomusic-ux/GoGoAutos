@@ -74,6 +74,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; backg
   body.light-mode #sig-canvas { background:#FFFFFF; }
 
 </style>
+<meta name="description" content="Create your GOGO Fleet account — manage contracts, payments and GPS for your rental fleet.">
 </head>
 <body>
 
@@ -321,36 +322,16 @@ async function submitSignup() {
     const authData = await authRes.json();
     if (authData.error) throw new Error(authData.error.message || authData.msg || 'Signup failed');
 
-    // 3. Insert team_members row as owner
-    if (authData.user?.id) {
-      await fetch(SB_URL + '/rest/v1/team_members', {
-        method: 'POST',
-        headers: {
-          'apikey': SB_KEY,
-          'Authorization': 'Bearer ' + SB_KEY,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
-        },
-        body: JSON.stringify({
-          user_id: authData.user.id,
-          email: signupData.email,
-          name: signupData.fname + ' ' + (signupData.lname || ''),
-          role: 'owner',
-          owner_id: authData.user.id,
-          last_seen: new Date().toISOString()
-        })
-      });
-    }
+    // 3. The owner's team_members row is created automatically by a database trigger
+    //    (no browser write to team_members, which used to require an open anonymous policy).
 
-    // 4. Send welcome email
+    // 4. Send welcome email (needs a session; skipped when the project requires email confirmation first)
     try {
+      if (!(authData.access_token || authData.session?.access_token)) throw new Error('no session yet');
       await fetch('https://pbglpxipzidwhaxganzx.supabase.co/functions/v1/send-welcome-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_KEY },
-        body: JSON.stringify({
-          name: signupData.fname + ' ' + (signupData.lname || ''),
-          email: signupData.email
-        })
+        headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + (authData.access_token || authData.session?.access_token || SB_KEY) },
+        body: JSON.stringify({})   // the function reads the name and address from your verified account
       });
     } catch(e) { console.warn('Welcome email failed:', e); }
 

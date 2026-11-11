@@ -1,0 +1,11 @@
+# secrets — never commit these
+.env
+.env.*
+*.pem
+service-role*
+# tooling
+node_modules/
+supabase/.temp/
+supabase/.branches/
+.DS_Store
+*.log
