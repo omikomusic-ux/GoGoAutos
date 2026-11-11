@@ -67,14 +67,29 @@ Deno.serve(async (req) => {
       return json(req, { error: `Week ${week} is already paid` }, 409);
     }
 
+    // Rent goes to the OPERATOR's connected Stripe account (destination charge); we keep a small
+    // application fee that roughly covers Stripe's processing cost so the platform isn't out of pocket.
+    const { data: car } = await sb.from("cars").select("owner_id").eq("id", renter.car_id).maybeSingle();
+    const { data: ob } = car?.owner_id
+      ? await sb.from("owner_billing").select("stripe_account_id, payouts_enabled").eq("owner_id", car.owner_id).maybeSingle()
+      : { data: null };
+    if (!ob?.stripe_account_id || !ob.payouts_enabled) {
+      return json(req, { error: "Online payment isn't available yet for this rental. Please pay your operator directly." }, 409);
+    }
+    const cents = Math.round(weekly * 100);
+    const pct = Number(Deno.env.get("RENT_APPLICATION_FEE_PERCENT") ?? "2.9");
+    const flat = Number(Deno.env.get("RENT_APPLICATION_FEE_FLAT_CENTS") ?? "30");
+    const fee = Math.min(cents - 1, Math.max(0, Math.round(cents * pct / 100) + flat));
+
     const session = await stripe.checkout.sessions.create({
+      payment_intent_data: { application_fee_amount: fee, transfer_data: { destination: ob.stripe_account_id } },
       // Card only: wallet methods need domain verification.
       payment_method_types: ["card"],
       line_items: [{
         price_data: {
           currency: "usd",
           product_data: {
-            name: `GOGO Fleet — Week ${week} Payment`,
+            name: `Rental — Week ${week} Payment`,
             description: `Rental payment for ${renter.name}`,
           },
           unit_amount: Math.round(weekly * 100),

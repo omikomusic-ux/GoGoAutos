@@ -36,8 +36,39 @@ Deno.serve(async (req) => {
     return new Response("Webhook Error", { status: 400 });
   }
 
+  // ── Operator subscriptions ────────────────────────────────────────────────
+  if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated" ||
+      event.type === "customer.subscription.deleted") {
+    const sub = event.data.object;
+    const ownerId = sub.metadata?.owner_id;
+    if (!ownerId) return new Response(JSON.stringify({ received: true, ignored: "no owner" }), { headers: jsonHeaders });
+    const planKey = String(sub.metadata?.plan ?? "");
+    const lookup = String(sub.items?.data?.[0]?.price?.lookup_key ?? "");
+    const plan = ["starter", "growth", "scale"].find((p) => lookup === `gogo_${p}_monthly`) ??
+      (["starter", "growth", "scale"].includes(planKey) ? planKey : undefined);
+    const { data: cur } = await supabase.from("owner_billing").select("status").eq("owner_id", ownerId).maybeSingle();
+    const patch: Record<string, unknown> = {
+      owner_id: ownerId,
+      stripe_subscription_id: sub.id,
+      cancel_at_period_end: !!sub.cancel_at_period_end,
+      current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null,
+      updated_at: new Date().toISOString(),
+    };
+    if (plan) patch.plan = plan;
+    if (cur?.status !== "comped") {
+      patch.status = event.type === "customer.subscription.deleted" ? "canceled" : sub.status;
+    }
+    const { error } = await supabase.from("owner_billing").upsert(patch);
+    if (error) { console.error("owner_billing upsert", error); return new Response("Database error", { status: 500 }); }
+    return new Response(JSON.stringify({ received: true }), { headers: jsonHeaders });
+  }
+
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
+    // Subscription checkouts are handled by the customer.subscription.* events above.
+    if (session.mode && session.mode !== "payment") {
+      return new Response(JSON.stringify({ received: true, ignored: session.mode }), { headers: jsonHeaders });
+    }
     const { car_id, week_num, amount, renter_name } = session.metadata ?? {};
 
     if (session.payment_status !== "paid") {
