@@ -41,7 +41,7 @@ Run the copy now; run `--delete` after step 6 once you've confirmed documents st
 ## 4. Deploy the functions
 ```bash
 supabase functions deploy renter-portal bouncie-token create-checkout send-sms \
-  payment-reminders send-welcome-email create-setup-intent
+  payment-reminders send-welcome-email create-setup-intent owner-billing
 supabase functions deploy stripe-webhook sms-optout --no-verify-jwt   # called by Stripe / Twilio
 ```
 (`supabase/config.toml` already records which functions skip JWT verification.)
@@ -64,10 +64,40 @@ dropped. Then run the checks below.
 - [ ] Bouncie → Tracking → Connect works.
 - [ ] New owner signup creates the account; the owner lands in the app with their own fleet.
 
+## 8. Billing & payouts (PR #2: `billing-and-onboarding`)
+Do this after steps 1–7 are working.
+
+1. **Plans (decide prices first; Stripe prices can't be edited).** Starter $49 (≤5 cars), Growth $149 (≤15), Scale $279 (unlimited), set in `scripts/stripe-setup.mjs`, `PLAN_INFO` in `app.html` and `index.html`.
+   `STRIPE_SECRET_KEY=sk_live_... node scripts/stripe-setup.mjs` (safe to re-run).
+2. Run `supabase/migrations/002_billing.sql`. Check `select * from owner_billing;` shows you as `comped`.
+3. Stripe dashboard → **Connect** → enable, choose **Express** accounts, finish the platform profile.
+4. Stripe → Settings → Billing → **Customer portal**: turn on; allow cancel + plan switching.
+5. Stripe → Webhooks → your endpoint: keep `checkout.session.completed`; add
+   `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`.
+   (No separate Connect webhook is needed.)
+6. Optional secrets: `RENT_APPLICATION_FEE_PERCENT` (default 2.9), `RENT_APPLICATION_FEE_FLAT_CENTS` (default 30), `SITE_URL`.
+7. Test in Stripe **test mode** first (separate keys/project): operator onboarding → renter pays a week → payment shows in the app, money reaches the operator's balance, your fee appears.
+
+### Comp / extend a client (SQL editor)
+```sql
+update owner_billing set status='comped', plan='growth'
+ where owner_id=(select id from auth.users where email='client@example.com');
+update owner_billing set status='trialing', trial_end=now()+interval '30 days'
+ where owner_id=(select id from auth.users where email='client@example.com');
+```
+
+### Verify billing
+- [ ] New signup → Team tab shows "14 days left in your free trial".
+- [ ] Adding a 6th car on Starter shows the plan-limit message and is blocked server-side.
+- [ ] Choose plan → Stripe Checkout → returns to app; status becomes Active.
+- [ ] Set up payouts → Stripe form → returns; status shows payouts enabled; renter then sees **Pay Now**.
+- [ ] Renter of an operator without payouts sees "Pay your operator directly", not Pay Now.
+- [ ] Contract and portal show the operator's business name (set in Team → Business Profile).
+
 ## Known follow-ups (not changed here)
 - Renter PINs default to the **last 4 digits of the phone number**. The server now rate-limits guesses,
   but give each renter a unique PIN (`renters.pin`) when you can.
 - The public `vehicle-photos` bucket may still allow anonymous uploads — see the query at the bottom of `001b_lockdown.sql`.
 - `sms-optout` should verify Twilio's request signature.
-- `app.html` removing a team member tries `auth/admin/users` with the anon key; that call can never succeed (needs the service role) so the login is not deleted. Move it to a function.
+- Removing a team member deletes their team row (so they lose access) but not their auth login. Move full deletion to a function.
 - Real server-sent push (app closed) needs VAPID keys + a subscriptions table.
